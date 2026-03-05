@@ -516,7 +516,7 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
             </div>
             <div className="input-group">
               <label className="input-label"><ClipboardList size={14} /> Job Description <span className="badge-optional">optional</span></label>
-              <textarea value={data.jobDescription} onChange={e => store.updateField('jobDescription', e.target.value)} className="input-field jd-textarea" rows={6} placeholder="Paste the full job description here for maximum ATS optimization..." />
+              <textarea value={data.jobDescription} onChange={e => store.updateField('jobDescription', e.target.value)} className="input-field jd-textarea" rows={10} placeholder="Paste the full job description here for maximum ATS optimization..." />
               <p className="field-hint">Pasting a JD lets AI extract keywords and score your resume against the role.</p>
             </div>
           </div>
@@ -526,7 +526,12 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
         {step === 3 && (
           <div className="step-content animate-fade-in">
             <div className="input-group">
-              <label className="input-label"><Code size={14} /> Skills {loadingSuggestion === 'skills' && <Loader2 size={13} className="spin-icon inline-loader" />}</label>
+              <div className="label-row">
+                <label className="input-label"><Code size={14} /> Skills {loadingSuggestion === 'skills' && <Loader2 size={13} className="spin-icon inline-loader" />}</label>
+                <button type="button" onClick={() => fetchSuggestion('skills', data.targetRole || data.skills.join(', ') || 'general')} disabled={loadingSuggestion === 'skills'} className="ai-autofill-btn" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}>
+                  {loadingSuggestion === 'skills' ? <><Loader2 size={12} className="spin-icon" /> Suggesting...</> : <><Sparkles size={12} /> AI Suggest Skills</>}
+                </button>
+              </div>
               <div className="skill-input-row">
                 <input type="text" value={skillInput} onChange={e => setSkillInput(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); handleAddChip('skills', skillInput, setSkillInput); onSkillsChange(); } }}
@@ -541,6 +546,11 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
                 </div>
               )}
               <SuggestionBubble field="skills" />
+              {data.jobDescription && (
+                <button type="button" onClick={() => fetchSuggestion('skills', `Extract the most important technical skills and keywords from this JD: ${data.jobDescription.substring(0, 500)}`)} disabled={loadingSuggestion === 'skills'} className="ai-autofill-btn" style={{ marginTop: '0.5rem', borderColor: 'var(--secondary)', color: 'var(--secondary)' }}>
+                  <Target size={13} /> Extract Skills from JD
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -668,7 +678,7 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
                     <input type="text" value={edu.institution} onChange={e => store.updateEducation(edu.id, 'institution', e.target.value)} className="input-field" placeholder="Stanford University" />
                   </div>
                 </div>
-                <div className="form-grid">
+                <div className="form-grid form-grid-3">
                   <div className="input-group">
                     <label className="input-label-sm">Year</label>
                     <input type="text" value={edu.year} onChange={e => store.updateEducation(edu.id, 'year', e.target.value)} className="input-field" placeholder="2020" />
@@ -676,6 +686,10 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
                   <div className="input-group">
                     <label className="input-label-sm">GPA (optional)</label>
                     <input type="text" value={edu.gpa} onChange={e => store.updateEducation(edu.id, 'gpa', e.target.value)} className="input-field" placeholder="3.9/4.0" />
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label-sm">Coursework (optional)</label>
+                    <input type="text" value={(edu as any).coursework || ''} onChange={e => store.updateEducation(edu.id, 'coursework' as any, e.target.value)} className="input-field" placeholder="Data Structures, ML, Databases" />
                   </div>
                 </div>
               </div>

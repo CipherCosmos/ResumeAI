@@ -3,7 +3,7 @@ import { extractText } from 'unpdf';
 import mammoth from 'mammoth';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { deductCredits, CREDIT_COSTS } from '@/lib/credits';
+import { deductCredits, checkCredits, CREDIT_COSTS } from '@/lib/credits';
 
 export async function POST(req: Request) {
     try {
@@ -21,10 +21,10 @@ export async function POST(req: Request) {
 
         const userId = (session.user as any).id;
 
-        try {
-            await deductCredits(userId, 'PARSE_RESUME', 'AI Resume Parsing');
-        } catch (creditError: any) {
-            return NextResponse.json({ error: creditError.message || 'Insufficient credits' }, { status: 403 });
+        // Pre-check credits (don't deduct yet — deduct only after success)
+        const creditCheck = await checkCredits(userId, 'PARSE_RESUME');
+        if (!creditCheck.allowed) {
+            return NextResponse.json({ error: `Insufficient credits. Need ${creditCheck.cost}, have ${creditCheck.balance}.` }, { status: 403 });
         }
 
         console.log('parse-resume: Received file:', file.name, 'size:', file.size);
@@ -156,10 +156,13 @@ ${text.substring(0, 5000)}
 
         try {
             const parsed = JSON.parse(content);
+            // SUCCESS — now deduct credits
+            await deductCredits(userId, 'PARSE_RESUME', 'AI Resume Parsing');
             return NextResponse.json({ parsed });
         } catch (jsonErr) {
             console.error('Failed to parse AI JSON:', content.substring(0, 500));
-            return NextResponse.json({ error: 'AI returned invalid formatting. Please try uploading a cleaner format or entering manually.' }, { status: 500 });
+            // DON'T deduct — AI returned garbage
+            return NextResponse.json({ error: 'AI returned invalid formatting. Please try again or enter manually.' }, { status: 500 });
         }
     } catch (err) {
         console.error('Parse resume error:', err);

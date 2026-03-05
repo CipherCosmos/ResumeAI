@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { FileText, Clock, Trash2, Coins, ArrowRight, Loader2, Plus, X, Eye } from 'lucide-react';
+import { FileText, Clock, Trash2, Coins, ArrowRight, Loader2, Plus, X, Eye, Share2 } from 'lucide-react';
 import ResumePreview from '@/components/ResumePreview';
 
 interface ResumeItem {
@@ -33,6 +33,7 @@ export default function DashboardPage() {
   // Resume viewing modal state
   const [viewingResume, setViewingResume] = useState<string | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -173,9 +174,14 @@ export default function DashboardPage() {
                     </span>
                   </div>
                 </div>
-                <button className="btn-icon" onClick={(e) => { e.stopPropagation(); handleDelete(resume.id); }} title="Delete" style={{ color: 'var(--error)', background: 'rgba(239, 68, 68, 0.1)', padding: '0.5rem', borderRadius: 'var(--radius-sm)' }}>
-                  <Trash2 size={16} />
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <button className="share-badge" onClick={(e) => { e.stopPropagation(); const url = `${window.location.origin}/r/${resume.id}`; navigator.clipboard.writeText(url); setCopiedId(resume.id); setTimeout(() => setCopiedId(null), 2000); }} title="Copy share link">
+                    <Share2 size={12} /> {copiedId === resume.id ? 'Copied!' : 'Share'}
+                  </button>
+                  <button className="btn-icon" onClick={(e) => { e.stopPropagation(); handleDelete(resume.id); }} title="Delete" style={{ color: 'var(--error)', background: 'rgba(239, 68, 68, 0.1)', padding: '0.5rem', borderRadius: 'var(--radius-sm)' }}>
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>

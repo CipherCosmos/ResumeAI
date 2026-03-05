@@ -23,6 +23,7 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-markdown": "^10.1.0",
+    "stripe": "^20.4.0",
     "unpdf": "^1.4.0",
     "zustand": "^5.0.11"
   },

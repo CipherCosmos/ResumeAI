@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Mail, Lock, Loader2, Sparkles, ArrowRight, User, Github } from 'lucide-react';
+import { Mail, Lock, Loader2, Sparkles, ArrowRight, User, Github, Linkedin } from 'lucide-react';
 
 type Tab = 'signin' | 'register';
 
@@ -174,6 +174,10 @@ export default function AuthPage() {
           <button type="button" onClick={() => handleOAuth('github')} className="auth-oauth-btn">
             <Github size={18} />
             Continue with GitHub
+          </button>
+          <button type="button" onClick={() => handleOAuth('linkedin')} className="auth-oauth-btn">
+            <Linkedin size={18} style={{ color: '#0077b5' }} />
+            Continue with LinkedIn
           </button>
         </div>
 

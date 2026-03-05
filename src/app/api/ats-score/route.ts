@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { deductCredits, CREDIT_COSTS } from '@/lib/credits';
+import { deductCredits, checkCredits, CREDIT_COSTS } from '@/lib/credits';
 
 export async function POST(req: Request) {
     try {
@@ -18,10 +18,10 @@ export async function POST(req: Request) {
 
         const userId = (session.user as any).id;
 
-        try {
-            await deductCredits(userId, 'ATS_SCORE', 'ATS Compatibility Score');
-        } catch (creditError: any) {
-            return NextResponse.json({ error: creditError.message || 'Insufficient credits' }, { status: 403 });
+        // Pre-check credits (don't deduct yet)
+        const creditCheck = await checkCredits(userId, 'ATS_SCORE');
+        if (!creditCheck.allowed) {
+            return NextResponse.json({ error: `Insufficient credits. Need ${creditCheck.cost}, have ${creditCheck.balance}.` }, { status: 403 });
         }
 
         const apiKey = process.env.OPENROUTER_API_KEY;
@@ -80,10 +80,13 @@ ${resume.substring(0, 3000)}
 
         try {
             const result = JSON.parse(content);
+            // SUCCESS — now deduct credits
+            await deductCredits(userId, 'ATS_SCORE', 'ATS Compatibility Score');
             return NextResponse.json(result);
         } catch {
             console.error('ATS score parse error:', content.substring(0, 200));
-            return NextResponse.json({ error: 'Invalid AI response' }, { status: 500 });
+            // DON'T deduct — AI returned garbage
+            return NextResponse.json({ error: 'Invalid AI response. Please try again.' }, { status: 500 });
         }
     } catch (err) {
         console.error('ATS score error:', err);

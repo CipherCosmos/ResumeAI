@@ -22,7 +22,21 @@
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Global UI Proportional Scaling */
+html {
+  font-size: 14px;
+  /* Scales down the entire UI so it's not massive on desktop */
+}
+
+@media (max-width: 768px) {
+  html {
+    font-size: 15px;
+    /* Return to slightly larger size on mobile for readability */
+  }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -155,7 +169,13 @@ a {
 
 /* ===== Form Panel ===== */
 .form-panel {
-  padding: 1.5rem;
+  padding: 2rem 2.5rem;
+}
+
+@media (max-width: 768px) {
+  .form-panel {
+    padding: 1.25rem;
+  }
 }
 
 /* ===== Progress Bar ===== */
@@ -285,17 +305,17 @@ a {
 .step-content {
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
+  gap: 1.25rem;
 }
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 0.85rem;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.25rem;
 }
 
 .form-grid-3 {
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
 }
 
 .input-group {
@@ -2854,6 +2874,74 @@ textarea.input-field {
   flex: 1;
 }
 
+/* --- PROFILE TABS --- */
+.profile-tabs {
+  position: sticky;
+  top: 100px;
+}
+
+.profile-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--foreground);
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+  font-family: var(--font-sans);
+}
+
+.profile-tab:hover {
+  background: var(--surface-border);
+}
+
+.profile-tab.active {
+  background: var(--primary-light);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* Animations */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+@media (max-width: 768px) {
+  .profile-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .profile-tabs {
+    position: static;
+    flex-direction: row !important;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+  }
+
+  .profile-tab {
+    white-space: nowrap;
+    padding: 0.6rem 1rem;
+  }
+}
+
 .view-badge {
   background: rgba(139, 92, 246, 0.1);
   color: var(--primary);
@@ -2868,4 +2956,73 @@ textarea.input-field {
   gap: 0.25rem;
   margin-left: 0.5rem;
   font-weight: 600;
+}
+
+/* --- PUBLIC SHARED RESUME PAGE --- */
+.public-resume-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.public-resume-header {
+  text-align: center;
+}
+
+.public-resume-header h1 {
+  font-size: 2rem;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+}
+
+.public-resume-header p {
+  font-size: 0.95rem;
+  opacity: 0.6;
+}
+
+.public-resume-body {
+  padding: 2.5rem;
+  line-height: 1.7;
+}
+
+.public-resume-body h1,
+.public-resume-body h2,
+.public-resume-body h3 {
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.public-resume-body ul {
+  padding-left: 1.25rem;
+}
+
+.public-resume-footer {
+  text-align: center;
+  opacity: 0.5;
+  font-size: 0.85rem;
+}
+
+/* Share button in dashboard */
+.share-badge {
+  background: rgba(14, 165, 233, 0.1);
+  color: var(--secondary);
+  border: 1px solid rgba(14, 165, 233, 0.2);
+  padding: 0.15rem 0.5rem;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.share-badge:hover {
+  background: rgba(14, 165, 233, 0.2);
 }

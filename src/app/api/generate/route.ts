@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { deductCredits } from '@/lib/credits';
+import { deductCredits, checkCredits } from '@/lib/credits';
 import { prisma } from '@/lib/prisma';
 
 export async function POST(req: Request) {
@@ -13,10 +13,15 @@ export async function POST(req: Request) {
         }
         const userId = (session.user as any).id;
 
-        // Credit check
-        const creditResult = await deductCredits(userId, 'GENERATE_RESUME', 'Generated ATS resume');
-        if (!creditResult.success) {
-            return NextResponse.json({ error: creditResult.error || 'Insufficient credits.' }, { status: 402 });
+        // Pre-check credits (don't deduct yet — we deduct only after success)
+        try {
+            const creditCheck = await checkCredits(userId, 'GENERATE_RESUME');
+            if (!creditCheck.allowed) {
+                return NextResponse.json({ error: `Insufficient credits. Need ${creditCheck.cost}, have ${creditCheck.balance}.` }, { status: 402 });
+            }
+        } catch (creditErr: any) {
+            console.error('Credit check failed:', creditErr);
+            return NextResponse.json({ error: 'Unable to verify credit balance. Please try again.' }, { status: 500 });
         }
 
         const body = await req.json();
@@ -139,7 +144,17 @@ STRICT RULES:
         const data = await response.json();
         const resume = data.choices?.[0]?.message?.content;
 
-        if (!resume) throw new Error('Unexpected API response');
+        if (!resume) {
+            return NextResponse.json({ error: 'AI returned an empty response. Credits were NOT charged. Please try again.' }, { status: 500 });
+        }
+
+        // SUCCESS — NOW deduct credits (wrapped in try-catch so a DB hiccup doesn't kill the response)
+        try {
+            await deductCredits(userId, 'GENERATE_RESUME', 'Generated ATS resume');
+        } catch (creditErr) {
+            console.error('Credit deduction failed after successful generation:', creditErr);
+            // Still return the resume — the user should not lose their output
+        }
 
         // ====== SAVE TO DATABASE ======
         try {

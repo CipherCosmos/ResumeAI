@@ -121,6 +121,47 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Pricing Section */}
+      <section className="pricing-section" style={{ display: 'flex', flexDirection: 'column', gap: '3rem', marginTop: '2rem' }}>
+        <div className="features-header">
+          <h2>Simple, Pay-As-You-Go Pricing</h2>
+          <p>We don't trap you in monthly subscriptions. Just buy AI tokens when you need them.</p>
+        </div>
+        <div className="templates-grid" style={{ maxWidth: '900px', margin: '0 auto', width: '100%' }}>
+            {/* Free Tier */}
+            <div className="template-mockup glass-panel" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left', padding: '2.5rem' }}>
+                <h4 style={{ color: 'var(--text-muted)', fontSize: '1.2rem', marginBottom: '0.5rem' }}>Trial</h4>
+                <div style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '0.5rem', color: 'var(--foreground)' }}>$0</div>
+                <p style={{ opacity: 0.7, marginBottom: '2rem' }}>Perfect for testing the AI.</p>
+                
+                <ul className="trust-list" style={{ marginBottom: '2.5rem', flex: 1 }}>
+                  <li style={{ fontSize: '0.95rem' }}><CheckCircle2 size={16} color="var(--success)" /> 10 Free AI Credits</li>
+                  <li style={{ fontSize: '0.95rem' }}><CheckCircle2 size={16} color="var(--success)" /> 5 Standard Resume PDF Exports</li>
+                  <li style={{ fontSize: '0.95rem' }}><CheckCircle2 size={16} color="var(--success)" /> 1 ATS Score Analysis</li>
+                  <li style={{ fontSize: '0.95rem' }}><CheckCircle2 size={16} color="var(--success)" /> Basic Templates</li>
+                </ul>
+                <Link href="/auth/register" className="btn-secondary" style={{ width: '100%', justifyContent: 'center' }}>Create Free Account</Link>
+            </div>
+            
+            {/* Pro Tier */}
+            <div className="template-mockup" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left', padding: '2.5rem', background: 'var(--surface)', border: '2px solid var(--primary)', borderRadius: 'var(--radius-xl)', position: 'relative', boxShadow: '0 20px 40px -10px rgba(79, 70, 229, 0.2)' }}>
+                <div style={{ position: 'absolute', top: '-14px', right: '2rem', background: 'var(--primary)', color: 'white', padding: '0.25rem 1rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase' }}>Most Popular</div>
+                <h4 style={{ color: 'var(--primary)', fontSize: '1.2rem', marginBottom: '0.5rem' }}>Pro Tokens</h4>
+                <div style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '0.5rem', color: 'var(--foreground)' }}>$5 <span style={{ fontSize: '1rem', fontWeight: 500, color: 'var(--text-muted)' }}>/ one-time</span></div>
+                <p style={{ opacity: 0.7, marginBottom: '2rem' }}>Build exactly what you need.</p>
+                
+                <ul className="trust-list" style={{ marginBottom: '2.5rem', flex: 1 }}>
+                  <li style={{ fontSize: '0.95rem' }}><CheckCircle2 size={16} color="var(--success)" /> 50 AI Credits</li>
+                  <li style={{ fontSize: '0.95rem' }}><CheckCircle2 size={16} color="var(--success)" /> Lifetime Access to Generated Resumes</li>
+                  <li style={{ fontSize: '0.95rem' }}><CheckCircle2 size={16} color="var(--success)" /> Advanced XYZ Bullet Rewrites</li>
+                  <li style={{ fontSize: '0.95rem' }}><CheckCircle2 size={16} color="var(--success)" /> Target JD Keyword Matching</li>
+                  <li style={{ fontSize: '0.95rem' }}><CheckCircle2 size={16} color="var(--success)" /> Premium ATS-Optimized Templates</li>
+                </ul>
+                <Link href={status === 'authenticated' ? '/dashboard' : '/auth/signin'} className="btn-primary" style={{ width: '100%' }}>Buy Tokens</Link>
+            </div>
+        </div>
+      </section>
+
       {/* Trust Section */}
       <section className="trust-section">
         <div className="trust-content" style={{maxWidth: '800px', textAlign: 'center'}}>

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { deductCredits, CREDIT_COSTS } from '@/lib/credits';
+import { deductCredits, checkCredits, CREDIT_COSTS } from '@/lib/credits';
 
 export async function POST(req: Request) {
     try {
@@ -18,10 +18,10 @@ export async function POST(req: Request) {
 
         const userId = (session.user as any).id;
 
-        try {
-            await deductCredits(userId, 'COVER_LETTER', 'AI Cover Letter Generation');
-        } catch (creditError: any) {
-            return NextResponse.json({ error: creditError.message || 'Insufficient credits' }, { status: 403 });
+        // Pre-check credits (don't deduct yet)
+        const creditCheck = await checkCredits(userId, 'COVER_LETTER');
+        if (!creditCheck.allowed) {
+            return NextResponse.json({ error: `Insufficient credits. Need ${creditCheck.cost}, have ${creditCheck.balance}.` }, { status: 403 });
         }
 
         const apiKey = process.env.OPENROUTER_API_KEY;
@@ -69,6 +69,14 @@ ${jobDescription ? jobDescription.substring(0, 3000) : 'General application for 
 
         const data = await response.json();
         const coverLetter = data.choices?.[0]?.message?.content?.trim() || '';
+
+        if (!coverLetter) {
+            // DON'T deduct — AI returned empty
+            return NextResponse.json({ error: 'AI returned an empty response. Please try again.' }, { status: 500 });
+        }
+
+        // SUCCESS — now deduct credits
+        await deductCredits(userId, 'COVER_LETTER', 'AI Cover Letter Generation');
 
         return NextResponse.json({ coverLetter });
     } catch (err) {

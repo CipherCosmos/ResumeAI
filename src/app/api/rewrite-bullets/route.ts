@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { deductCredits, CREDIT_COSTS } from '@/lib/credits';
+import { deductCredits, checkCredits, CREDIT_COSTS } from '@/lib/credits';
 
 export async function POST(req: Request) {
     try {
@@ -18,11 +18,10 @@ export async function POST(req: Request) {
 
         const userId = (session.user as any).id;
 
-        try {
-            // Re-writing bullets costs 1 credit
-            await deductCredits(userId, 'REWRITE_BULLETS', 'AI Bullet Rewriting');
-        } catch (creditError: any) {
-            return NextResponse.json({ error: creditError.message || 'Insufficient credits' }, { status: 403 });
+        // Pre-check credits (don't deduct yet)
+        const creditCheck = await checkCredits(userId, 'REWRITE_BULLETS');
+        if (!creditCheck.allowed) {
+            return NextResponse.json({ error: `Insufficient credits. Need ${creditCheck.cost}, have ${creditCheck.balance}.` }, { status: 403 });
         }
 
         const apiKey = process.env.OPENROUTER_API_KEY;
@@ -67,6 +66,8 @@ ${entry.bullets.join('\n')}
         try {
             const rewritten = JSON.parse(content);
             if (Array.isArray(rewritten)) {
+                // SUCCESS — now deduct credits
+                await deductCredits(userId, 'REWRITE_BULLETS', 'AI Bullet Rewriting');
                 return NextResponse.json({ bullets: rewritten });
             } else {
                 return NextResponse.json({ error: 'Invalid response format from AI' }, { status: 500 });

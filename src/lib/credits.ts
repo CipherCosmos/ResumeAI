@@ -60,6 +60,47 @@ export async function deductCredits(
 }
 
 /**
+ * Check if a user has enough credits for an action WITHOUT deducting.
+ * Use this before expensive operations, then call deductCredits after success.
+ */
+export async function checkCredits(
+    userId: string,
+    action: keyof typeof CREDIT_COSTS
+): Promise<{ allowed: boolean; balance: number; cost: number }> {
+    const cost = CREDIT_COSTS[action];
+    if (cost === 0) {
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        return { allowed: true, balance: user?.credits ?? 0, cost: 0 };
+    }
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return { allowed: false, balance: 0, cost };
+    return { allowed: user.credits >= cost, balance: user.credits, cost };
+}
+
+/**
+ * Refund credits back to a user (e.g., if an operation failed after deduction).
+ */
+export async function refundCredits(
+    userId: string,
+    action: keyof typeof CREDIT_COSTS,
+    reason: string
+): Promise<CreditResult> {
+    const cost = CREDIT_COSTS[action];
+    if (cost === 0) {
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        return { success: true, remaining: user?.credits ?? 0 };
+    }
+    const updated = await prisma.user.update({
+        where: { id: userId },
+        data: { credits: { increment: cost } },
+    });
+    await prisma.transaction.create({
+        data: { userId, amount: cost, type: 'REFUND', description: `Refund: ${reason}` },
+    });
+    return { success: true, remaining: updated.credits };
+}
+
+/**
  * Add credits to a user's account (for purchases / bonuses).
  */
 export async function addCredits(
