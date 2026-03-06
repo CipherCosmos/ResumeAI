@@ -1,5 +1,10 @@
 import { callAI } from '@/lib/ai';
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
+
+const suggestionSchema = z.object({
+    suggestion: z.string()
+});
 
 export async function POST(req: Request) {
     try {
@@ -38,13 +43,21 @@ export async function POST(req: Request) {
 
         const aiResult = await callAI({
             messages: [
-                { role: 'user', content: 'You are a concise career advisor. Give short, actionable suggestions. No explanations or preamble.\n\n' + prompt },
+                { role: 'system', content: 'You are a concise AI assistant. You MUST respond with a valid JSON object matching this schema: { "suggestion": "your output here" }. Do not wrap the JSON in markdown blocks.' },
+                { role: 'user', content: prompt }
             ],
             temperature: 0.5,
             max_tokens: 400,
         });
 
-        return NextResponse.json({ suggestion: aiResult.content });
+        try {
+            const parsed = suggestionSchema.parse(JSON.parse(aiResult.content.trim()));
+            return NextResponse.json({ suggestion: parsed.suggestion });
+        } catch (parseError) {
+            console.error("AI Output Parse Error:", parseError, aiResult.content);
+            // Fallback if the AI just returns text anyway
+            return NextResponse.json({ suggestion: aiResult.content.replace(/^```json\n|\n```$/g, '') });
+        }
     } catch {
         return NextResponse.json({ suggestion: '' });
     }

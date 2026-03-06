@@ -14,6 +14,7 @@ import { TargetAndSkillsSection } from '@/components/form/TargetAndJDSection';
 import { ExperienceSection } from '@/components/form/ExperienceSection';
 import { ProjectsSection } from '@/components/form/ProjectsSection';
 import { EducationSection } from '@/components/form/EducationSection';
+import { resumeSchema } from '@/lib/validations/resume';
 
 interface ResumeFormProps {
   onSubmit: (data: ResumeData) => void;
@@ -410,6 +411,8 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
     if (file) processFile(file);
   };
 
+  const [validationErrors, setValidationErrors] = useState<Record<string, string[]>>({});
+
   const handleProfileImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -428,6 +431,44 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setValidationErrors({});
+
+    const result = resumeSchema.safeParse(data);
+    if (!result.success) {
+      const formattedErrors = result.error.format();
+      const newErrors: Record<string, string[]> = {};
+      
+      // Personal
+      if (formattedErrors.personal) {
+        newErrors['Personal Details'] = [];
+        if (formattedErrors.personal.fullName) newErrors['Personal Details'].push(...formattedErrors.personal.fullName._errors);
+        if (formattedErrors.personal.email) newErrors['Personal Details'].push(...formattedErrors.personal.email._errors);
+      }
+      // Target Role
+      if (formattedErrors.targetRole) {
+         newErrors['Target & JD'] = newErrors['Target & JD'] || [];
+         newErrors['Target & JD'].push(...formattedErrors.targetRole._errors);
+      }
+      // Experience
+      if (formattedErrors.experience) {
+        newErrors['Experience'] = ['Some work entries are missing required fields (Company, Title, Dates) or bullets are too short.'];
+      }
+      // Education
+      if (formattedErrors.education) {
+        newErrors['Education'] = ['Some education entries are missing required fields (Institution, Degree, Year).'];
+      }
+      // Projects
+      if (formattedErrors.projects) {
+        newErrors['Projects'] = ['Some projects are missing required fields (Name, Tech Stack, Description).'];
+      }
+
+      if (Object.keys(newErrors).length > 0) {
+        setValidationErrors(newErrors);
+        alert('Please fix the validation errors before generating.');
+        return;
+      }
+    }
+
     onSubmit(data);
   };
 
@@ -1038,6 +1079,21 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
             </div>
           )}
         </div>
+
+        {Object.keys(validationErrors).length > 0 && (
+          <div className="animate-fade-in" style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(239, 68, 68, 0.05)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', color: 'var(--error)', fontSize: '0.95rem', fontWeight: 600 }}>
+              <AlertTriangle size={16} /> Validation Errors
+            </h3>
+            <ul style={{ margin: 0, paddingLeft: '1.5rem', color: 'var(--error)', fontSize: '0.85rem' }}>
+              {Object.entries(validationErrors).map(([section, errors]) => (
+                <li key={section} style={{ marginBottom: '0.25rem' }}>
+                  <strong>{section}:</strong> {errors.join(' ')}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {coverLetter && (
           <div className="grid gap-2 animate-fade-in" style={{ marginTop: '1.5rem', padding: '1.5rem', background: 'rgba(139, 92, 246, 0.05)', borderRadius: 'var(--radius-lg)', border: '1px solid rgba(139, 92, 246, 0.2)' }}>

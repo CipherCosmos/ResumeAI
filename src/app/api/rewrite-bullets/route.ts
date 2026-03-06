@@ -2,7 +2,10 @@ import { callAI } from '@/lib/ai';
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { deductCredits, checkCredits, CREDIT_COSTS } from '@/lib/credits';
+import { deductCredits, checkCredits } from '@/lib/credits';
+import { z } from 'zod';
+
+const bulletSchema = z.array(z.string());
 
 export async function POST(req: Request) {
     try {
@@ -33,33 +36,27 @@ export async function POST(req: Request) {
 Follow the Google XYZ formula: "Accomplished [X], as measured by [Y], by doing [Z]".
 Make them highly impactful, active, and results-oriented.
 
-Return ONLY a valid JSON array of strings (the rewritten bullets). Nothing else.
-Example: ["bullet 1...", "bullet 2..."]
-
 Original Bullets:
 ${entry.bullets.join('\n')}
 `;
 
         const aiResult = await callAI({
-            messages: [{ role: 'user', content: prompt }],
+            messages: [
+                { role: 'system', content: 'You are a concise AI assistant. You MUST respond with a valid JSON array of strings containing the rewritten bullets. Example: ["bullet 1...", "bullet 2..."]. Do not wrap the JSON in markdown blocks or include any other text.' },
+                { role: 'user', content: prompt }
+            ],
             temperature: 0.4,
             max_tokens: 500,
         });
 
-        let content = aiResult.content;
-        content = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
-
         try {
-            const rewritten = JSON.parse(content);
-            if (Array.isArray(rewritten)) {
-                // SUCCESS — now deduct credits
-                await deductCredits(userId, 'REWRITE_BULLETS', 'AI Bullet Rewriting');
-                return NextResponse.json({ bullets: rewritten });
-            } else {
-                return NextResponse.json({ error: 'Invalid response format from AI' }, { status: 500 });
-            }
-        } catch {
-            return NextResponse.json({ error: 'Invalid response from AI' }, { status: 500 });
+            const parsedArray = bulletSchema.parse(JSON.parse(aiResult.content.trim()));
+            // SUCCESS — now deduct credits
+            await deductCredits(userId, 'REWRITE_BULLETS', 'AI Bullet Rewriting');
+            return NextResponse.json({ bullets: parsedArray });
+        } catch (parseError) {
+            console.error("AI Bullet Parse Error:", parseError, aiResult.content);
+            return NextResponse.json({ error: 'Invalid response format from AI' }, { status: 500 });
         }
     } catch (err) {
         console.error('Bullet rewrite error:', err);

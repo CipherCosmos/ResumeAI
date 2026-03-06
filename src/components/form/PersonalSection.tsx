@@ -118,7 +118,6 @@ export function PersonalSection() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             {data.personal.profileImage ? (
               <div style={{ position: 'relative', width: '80px', height: '80px', borderRadius: '50%', overflow: 'hidden', border: '2px solid var(--surface-border)' }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={data.personal.profileImage} alt="Profile preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 <button type="button" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-10 w-10 shrink-0" onClick={() => updatePersonal('profileImage', '')} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', color: 'white', border: 'none', borderRadius: 0, opacity: 0, transition: 'opacity 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => e.currentTarget.style.opacity = '1'} onMouseLeave={e => e.currentTarget.style.opacity = '0'}>
                   <Trash2 size={24} />
