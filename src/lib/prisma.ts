@@ -26,16 +26,26 @@ function createPrismaClient() {
 
     if (process.env.NODE_ENV === 'production' || connectionString.includes('aivencloud.com')) {
         try {
-            // Read the CA cert we just created
-            const caPath = path.resolve(process.cwd(), 'ca.pem');
-            if (fs.existsSync(caPath)) {
+            if (process.env.DATABASE_CA_CERT) {
+                // If provided via environment variable (useful for Vercel/Netlify)
+                // Replace literal \n with actual newlines in case it was stored as a single line
+                const caContent = process.env.DATABASE_CA_CERT.replace(/\\n/g, '\n');
                 sslOptions = {
                     rejectUnauthorized: true,
-                    ca: fs.readFileSync(caPath).toString()
+                    ca: caContent
                 };
             } else {
-                // Fallback to ignoring unauthorized if cert is missing but required
-                sslOptions = { rejectUnauthorized: false };
+                // Read the CA cert from disk (useful for local dev or Docker)
+                const caPath = path.resolve(process.cwd(), 'ca.pem');
+                if (fs.existsSync(caPath)) {
+                    sslOptions = {
+                        rejectUnauthorized: true,
+                        ca: fs.readFileSync(caPath).toString()
+                    };
+                } else {
+                    // Fallback to ignoring unauthorized if cert is missing but required
+                    sslOptions = { rejectUnauthorized: false };
+                }
             }
         } catch (e) {
             console.error('Error loading CA certificate:', e);
