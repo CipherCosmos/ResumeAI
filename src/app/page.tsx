@@ -21,7 +21,7 @@ export default function LandingPage() {
     <div className="flex flex-col min-h-screen bg-background text-foreground selection:bg-primary selection:text-primary-foreground">
       {/* Hero Section */}
       <section className="relative px-6 pt-24 pb-32 md:pt-36 md:pb-40 overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-zinc-200/40 via-background to-background dark:from-zinc-900/40" />
+        <div className="absolute inset-0 bg-gradient-to-b from-zinc-200/40 via-background to-background dark:from-zinc-900/40" />
         <div className="container relative z-10 mx-auto text-center max-w-4xl">
           <div className="inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-sm font-medium text-primary mb-6 transition-colors">
             <Sparkles className="w-4 h-4 mr-2" /> 
@@ -126,7 +126,7 @@ export default function LandingPage() {
             <p className="text-muted-foreground text-lg">Build a professional resume in minutes, not hours.</p>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
             {[
               { icon: Upload, title: "1. Smart Parsing", desc: "Upload your old PDF/Word doc — AI instantly extracts all your data." },
               { icon: Briefcase, title: "2. Personal Info", desc: "Your contact details, LinkedIn, GitHub, and portfolio links." },

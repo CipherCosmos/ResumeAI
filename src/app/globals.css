@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @source "../components";
+@source "../app";
 @source "../lib";
 @plugin "tailwindcss-animate";
 
@@ -90,17 +91,35 @@ html {
 }
 
 body {
-  font-family: var(--font-sans);
+  font-family: var(--font-geist-sans), var(--font-sans);
   min-height: 100vh;
+  width: 100vw;
+  overflow-x: hidden;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   background-color: var(--background);
   color: var(--foreground);
+  display: flex;
+  flex-direction: column;
 }
 
 a {
   color: inherit;
   text-decoration: none;
+}
+
+/* ===== App Layout ===== */
+.app-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+@layer components {
+  .container {
+    @apply w-full mx-auto px-4 md:px-8 max-w-7xl;
+  }
 }
 
 /* ===== Glass Panel ===== */
