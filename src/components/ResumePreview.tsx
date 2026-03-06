@@ -9,6 +9,7 @@ import { ModernTemplate } from './templates/ModernTemplate';
 import { MinimalTemplate } from './templates/MinimalTemplate';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { useReactToPrint } from 'react-to-print';
 
 interface AtsResult {
   score: number;
@@ -40,6 +41,12 @@ export default function ResumePreview({ resumeMarkdown, resumeData, onReset, job
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resumeMarkdown]);
+
+  // PDF generation utilizing react-to-print
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: activeData?.personal?.fullName ? `${activeData.personal.fullName.replace(/\s+/g, '_')}_Resume` : 'Resume',
+  });
 
   const runAtsScore = async () => {
     if (!resumeMarkdown || !jobDescription) return;
@@ -120,7 +127,7 @@ export default function ResumePreview({ resumeMarkdown, resumeData, onReset, job
         </div>
         <div className="preview-toolbar-right">
           <button onClick={onReset} className="toolbar-btn" title="Reset" type="button"><RefreshCw size={14} /> Reset</button>
-          <button onClick={() => window.print()} className="toolbar-btn accent" title="Print / PDF" type="button"><Printer size={14} /> Print PDF</button>
+          <button onClick={() => handlePrint()} className="toolbar-btn accent" title="Print / PDF" type="button"><Printer size={14} /> Print PDF</button>
         </div>
       </div>
 

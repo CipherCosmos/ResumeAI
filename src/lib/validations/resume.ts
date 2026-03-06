@@ -13,9 +13,9 @@ export const personalSchema = z.object({
 
 export const educationSchema = z.object({
     id: z.string(),
-    institution: z.string().min(2, 'Institution name is required'),
-    degree: z.string().min(2, 'Degree/Program is required'),
-    year: z.string().min(2, 'Year is required'),
+    institution: z.string().min(2, 'Institution name is required').or(z.literal('')),
+    degree: z.string().min(2, 'Degree/Program is required').or(z.literal('')),
+    year: z.string().min(2, 'Year is required').or(z.literal('')),
     gpa: z.string().optional(),
     coursework: z.string().optional(),
     bullets: z.array(z.string()).optional(), // Add later if needed
@@ -23,19 +23,19 @@ export const educationSchema = z.object({
 
 export const workEntrySchema = z.object({
     id: z.string(),
-    company: z.string().min(2, 'Company name is required'),
-    jobTitle: z.string().min(2, 'Job title is required'),
+    company: z.string().min(2, 'Company name is required').or(z.literal('')),
+    jobTitle: z.string().min(2, 'Job title is required').or(z.literal('')),
     location: z.string().optional(),
-    startDate: z.string().min(2, 'Start date is required'),
-    endDate: z.string().min(2, 'End date is required'),
-    bullets: z.array(z.string().min(10, 'Bullet must contain at least 10 characters')),
+    startDate: z.string().min(2, 'Start date is required').or(z.literal('')),
+    endDate: z.string().min(2, 'End date is required').or(z.literal('')),
+    bullets: z.array(z.string()),
 });
 
 export const projectSchema = z.object({
     id: z.string(),
-    name: z.string().min(2, 'Project name is required'),
-    techStack: z.string().min(2, 'Tech stack is required'),
-    description: z.string().min(10, 'Description must be at least 10 characters'),
+    name: z.string().min(2, 'Project name is required').or(z.literal('')),
+    techStack: z.string().min(2, 'Tech stack is required').or(z.literal('')),
+    description: z.string().min(10, 'Description must be at least 10 characters').or(z.literal('')),
     link: z.string().url('Must be a valid URL').optional().or(z.literal('')),
 });
 

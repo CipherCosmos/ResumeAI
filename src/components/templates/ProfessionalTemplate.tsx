@@ -11,8 +11,11 @@ export function ProfessionalTemplate({ data }: TemplateProps) {
   return (
     <div className="resume-paper template-professional">
       <header className="text-center mb-6 border-b-2 border-slate-800 pb-4">
-        <h1 className="text-3xl font-bold uppercase tracking-wider text-slate-900 mb-2">{personal.fullName}</h1>
-        <div className="text-sm font-medium text-slate-700 flex flex-wrap justify-center gap-x-4 gap-y-1">
+        <h1 className="text-3xl font-bold uppercase tracking-wider text-slate-900 mb-1">{personal.fullName}</h1>
+        {data.targetRole && (
+          <h2 className="text-[1.1rem] font-medium tracking-widest text-slate-800 uppercase mb-3">{data.targetRole}</h2>
+        )}
+        <div className="text-base font-semibold text-slate-700 flex flex-wrap justify-center gap-x-4 gap-y-1">
           {personal.location && <span>{personal.location}</span>}
           {personal.phone && (
             <>
@@ -125,9 +128,9 @@ export function ProfessionalTemplate({ data }: TemplateProps) {
                   <h3 className="text-[0.9em] font-bold text-slate-900">{edu.institution}</h3>
                   <div className="text-[0.85em] text-slate-800">
                     {edu.degree}
-                    {edu.gpa && <span className="ml-2 text-slate-600">| GPA: {edu.gpa}</span>}
-                    {(edu as any).coursework && <div className="text-slate-600 mt-1">Relevant Coursework: {(edu as any).coursework}</div>}
                   </div>
+                  {edu.gpa && <div className="text-[0.85em] text-slate-600 mt-0.5">GPA: <span className="font-medium text-slate-800">{edu.gpa}</span></div>}
+                  {(edu as any).coursework && <div className="text-[0.85em] text-slate-600 mt-1"><span className="font-medium text-slate-800">Relevant Coursework:</span> {(edu as any).coursework}</div>}
                 </div>
                 <span className="text-[0.85em] font-medium text-slate-700">{edu.year}</span>
               </div>

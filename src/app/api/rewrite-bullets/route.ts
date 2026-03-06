@@ -9,7 +9,7 @@ const bulletSchema = z.array(z.string());
 
 export async function POST(req: Request) {
     try {
-        const { entry, targetRole } = await req.json();
+        const { entry, targetRole, jobDescription } = await req.json();
 
         if (!entry || !entry.bullets || entry.bullets.length === 0) {
             return NextResponse.json({ error: 'Experience entry with bullets is required' }, { status: 400 });
@@ -31,7 +31,12 @@ export async function POST(req: Request) {
         const apiKey = process.env.OPENROUTER_API_KEY;
         if (!apiKey) return NextResponse.json({ error: 'Config error' }, { status: 500 });
 
+        const jdContext = jobDescription
+            ? `\nCRITICAL CONTEXT: The user is applying for a job with this description:\n"${jobDescription}"\n\nYou MUST seamlessly integrate prevalent keywords and phrases from this Job Description into the rewritten bullets where logically possible.`
+            : '';
+
         const prompt = `You are an expert resume writer. Rewrite the following achievement bullets for a ${entry.jobTitle || 'professional'} at ${entry.company || 'a company'}, targeting a ${targetRole || 'new'} role.
+${jdContext}
 
 Follow the Google XYZ formula: "Accomplished [X], as measured by [Y], by doing [Z]".
 Make them highly impactful, active, and results-oriented.

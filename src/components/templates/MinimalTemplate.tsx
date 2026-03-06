@@ -6,12 +6,15 @@ interface TemplateProps {
 }
 
 export function MinimalTemplate({ data }: TemplateProps) {
-  const { personal, summary, experience, education, projects, skills } = data;
+  const { personal, summary, experience, education, projects, skills, certifications, languages } = data;
 
   return (
     <div className="resume-paper template-minimal font-mono text-slate-900 bg-white">
       <header className="mb-6">
-        <h1 className="text-2xl font-black uppercase tracking-tight mb-2 border-b-2 border-black pb-1">{personal.fullName}</h1>
+        <h1 className="text-2xl font-black uppercase tracking-tight mb-1 border-b-2 border-black pb-1">{personal.fullName}</h1>
+        {data.targetRole && (
+          <h2 className="text-[1.1rem] font-bold tracking-widest uppercase mb-3 text-slate-700">{data.targetRole}</h2>
+        )}
         <div className="text-[0.8em] font-medium flex flex-wrap gap-x-3 gap-y-1">
           {personal.email && <span>{personal.email}</span>}
           {personal.phone && <span>{personal.phone}</span>}
@@ -94,6 +97,16 @@ export function MinimalTemplate({ data }: TemplateProps) {
                 <span className="text-[0.8em]">{edu.year}</span>
               </div>
             ))}
+          </div>
+        </section>
+      )}
+
+      {(certifications.length > 0 || languages.length > 0) && (
+        <section className="mb-5">
+          <h2 className="text-[0.85em] font-black uppercase tracking-widest bg-black text-white px-2 py-0.5 inline-block mb-3">Additional Information</h2>
+          <div className="flex flex-col gap-1 text-[0.85em] leading-snug">
+            {certifications.length > 0 && <div><span className="font-bold">Certifications:</span> {certifications.join(', ')}</div>}
+            {languages.length > 0 && <div><span className="font-bold">Languages:</span> {languages.join(', ')}</div>}
           </div>
         </section>
       )}

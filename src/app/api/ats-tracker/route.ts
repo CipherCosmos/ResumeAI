@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { checkCredits, deductCredits } from '@/lib/credits';
 import prisma from '@/lib/prisma';
+import { z } from 'zod';
 
 // GET: return all ATS scores for the user, grouped by resume
 export async function GET() {
@@ -200,23 +201,6 @@ Here are the computed results:
 - Bullets: ${engineResult.bulletAnalysis.totalBullets} total, ${engineResult.bulletAnalysis.actionVerbBullets} with action verbs, ${engineResult.bulletAnalysis.quantifiedBullets} with metrics
 - Word Count: ${engineResult.formatMetrics.wordCount} (~${engineResult.formatMetrics.estimatedPages} page${engineResult.formatMetrics.estimatedPages > 1 ? 's' : ''})
 
-Return ONLY valid JSON:
-{
-  "overallVerdict": "2-3 sentence professional assessment of resume-JD fit",
-  "suggestions": ["4-6 specific actionable tips to improve the match"],
-  "strengthAreas": ["2-3 things the resume does well"],
-  "formatIssues": ["any formatting concerns"],
-  "sectionFeedback": {
-    "contactInfo": "brief feedback",
-    "summary": "brief feedback",
-    "experience": "brief feedback",
-    "skills": "brief feedback",
-    "education": "brief feedback",
-    "projects": "brief feedback",
-    "formatting": "brief feedback"
-  }
-}
-
 Resume (truncated):
 ---
 ${resumeContent.substring(0, 3000)}
@@ -230,7 +214,10 @@ ${jobDescription.substring(0, 2000)}
         let aiResult;
         try {
             aiResult = await callAI({
-                messages: [{ role: 'user', content: prompt }],
+                messages: [
+                    { role: 'system', content: 'You are an ATS AI Assistant. You MUST return ONLY a valid JSON object matching exactly this schema, with NO markdown formatting:\n{"overallVerdict":"string","suggestions":["string"],"strengthAreas":["string"],"formatIssues":["string"],"sectionFeedback":{"contactInfo":"string","summary":"string","experience":"string","skills":"string","education":"string","projects":"string","formatting":"string"}}' },
+                    { role: 'user', content: prompt }
+                ],
                 temperature: 0.2,
                 max_tokens: 1200,
             });
@@ -242,10 +229,20 @@ ${jobDescription.substring(0, 2000)}
         let aiCommentary: any = {};
         try {
             let content = aiResult.content;
-            const jsonMatch = content.match(/\{[\s\S]*\}/);
-            if (jsonMatch) content = jsonMatch[0];
-            aiCommentary = JSON.parse(content);
-        } catch {
+            content = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
+            const parsedJson = JSON.parse(content);
+
+            const aiCommentarySchema = z.object({
+                overallVerdict: z.string().optional(),
+                suggestions: z.array(z.string()).optional(),
+                strengthAreas: z.array(z.string()).optional(),
+                formatIssues: z.array(z.string()).optional(),
+                sectionFeedback: z.record(z.string(), z.string()).optional()
+            });
+
+            aiCommentary = aiCommentarySchema.parse(parsedJson);
+        } catch (err) {
+            console.error('ATS qualitative parse failed. Using defaults.', err);
             aiCommentary = {};
         }
 

@@ -15,6 +15,7 @@ import { ExperienceSection } from '@/components/form/ExperienceSection';
 import { ProjectsSection } from '@/components/form/ProjectsSection';
 import { EducationSection } from '@/components/form/EducationSection';
 import { resumeSchema } from '@/lib/validations/resume';
+import { toast } from 'sonner';
 
 interface ResumeFormProps {
   onSubmit: (data: ResumeData) => void;
@@ -100,6 +101,23 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
     setLoadingSuggestion(null);
   };
 
+  // --- Auto-Save ---
+  React.useEffect(() => {
+    if (!store.currentResumeId) return; // Don't auto-save before initial generation
+    const timer = setTimeout(() => {
+      // Background save without blocking UI state
+      fetch('/api/resumes', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          id: store.currentResumeId, 
+          data: data 
+        }),
+      }).catch(err => console.error('Silent auto-save failed:', err));
+    }, 3500);
+    return () => clearTimeout(timer);
+  }, [data, store.currentResumeId]);
+
   const applySuggestion = (field: string) => {
     const s = suggestions[field];
     if (!s) return;
@@ -135,6 +153,8 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
             education: data.education.map(e => `${e.degree} from ${e.institution}`).join('; '),
           }),
           target_role: data.targetRole,
+          job_description: data.jobDescription,
+          skills: data.skills.join(', '),
         }),
       });
       const result = await res.json();
@@ -159,7 +179,7 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
       const res = await fetch('/api/rewrite-bullets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entry, targetRole: data.targetRole }),
+        body: JSON.stringify({ entry, targetRole: data.targetRole, jobDescription: data.jobDescription }),
       });
       const result = await res.json();
       if (result.bullets) {
@@ -186,10 +206,10 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
           });
         }
       } else if (result.error) {
-         alert(result.error);
+         toast.error(result.error);
       }
     } catch { 
-       alert('Failed to rewrite bullets.');
+       toast.error('Failed to rewrite bullets.');
     } finally {
       setBulletLoading(null);
     }
@@ -202,7 +222,7 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
       const res = await fetch('/api/suggest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ field: 'roleBullets', value: jobTitle, target_role: data.targetRole }),
+        body: JSON.stringify({ field: 'roleBullets', value: jobTitle, target_role: data.targetRole, job_description: data.jobDescription }),
       });
       const result = await res.json();
       if (result.suggestion) {
@@ -232,7 +252,7 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
          }
       }
     } catch { 
-       alert('Failed to generate bullet ideas.');
+       toast.error('Failed to generate bullet ideas.');
     } finally {
       setBulletLoading(null);
     }
@@ -245,11 +265,28 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
       const res = await fetch('/api/suggest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ field: 'projectDesc', value: desc, target_role: data.targetRole }),
+        body: JSON.stringify({ field: 'projectDesc', value: desc, target_role: data.targetRole, job_description: data.jobDescription }),
       });
       const result = await res.json();
       if (result.suggestion) {
          store.updateProject(projId, 'description', result.suggestion);
+      }
+    } catch { /* silent */ }
+    setLoadingSuggestion(null);
+  };
+
+  const handleSuggestTechStack = async (projId: string, desc: string) => {
+    if (!desc) return;
+    setLoadingSuggestion(projId + '_tech');
+    try {
+      const res = await fetch('/api/suggest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ field: 'techStackFromDesc', value: desc }),
+      });
+      const result = await res.json();
+      if (result.suggestion) {
+         store.updateProject(projId, 'techStack', result.suggestion);
       }
     } catch { /* silent */ }
     setLoadingSuggestion(null);
@@ -288,11 +325,12 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
       const result = await res.json();
       if (result.resume?.id) {
         store.setCurrentResumeId(result.resume.id);
-        alert('Resume draft saved successfully!');
+        toast.success('Resume draft saved successfully!');
+      } else {
+        throw new Error();
       }
-    } catch (err) {
-      console.error('Failed to save draft:', err);
-      alert('Failed to save draft.');
+    } catch {
+      toast.error('Failed to save draft.');
     } finally {
       setIsSavingDraft(false);
     }
@@ -320,10 +358,10 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
       if (result.coverLetter) {
         setCoverLetter(result.coverLetter);
       } else if (result.error) {
-        alert(result.error);
+        toast.error(result.error);
       }
     } catch {
-      alert('Failed to generate cover letter.');
+      toast.error('Failed to generate cover letter.');
     } finally {
       setCoverLetterLoading(false);
     }
@@ -418,7 +456,7 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
     if (!file) return;
 
     if (file.size > 2 * 1024 * 1024) {
-      alert("Image must be smaller than 2MB.");
+      toast.error("Image must be smaller than 2MB.");
       return;
     }
 
@@ -433,7 +471,21 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
     e.preventDefault();
     setValidationErrors({});
 
-    const result = resumeSchema.safeParse(data);
+    // Filter out completely empty boilerplate instances before attempting validation
+    const cleanedData = {
+      ...data,
+      experience: data.experience.filter(exp => 
+        exp.company.trim() || exp.jobTitle.trim() || exp.bullets.some(b => b.trim())
+      ),
+      education: data.education.filter(edu => 
+        edu.institution.trim() || edu.degree.trim() || edu.year.trim()
+      ),
+      projects: data.projects.filter(proj => 
+        proj.name.trim() || proj.techStack.trim() || proj.description.trim()
+      ),
+    };
+
+    const result = resumeSchema.safeParse(cleanedData);
     if (!result.success) {
       const formattedErrors = result.error.format();
       const newErrors: Record<string, string[]> = {};
@@ -464,12 +516,12 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
 
       if (Object.keys(newErrors).length > 0) {
         setValidationErrors(newErrors);
-        alert('Please fix the validation errors before generating.');
+        toast.error('Please fix the validation errors before generating.');
         return;
       }
     }
 
-    onSubmit(data);
+    onSubmit(cleanedData);
   };
 
   const handleReviewReadiness = async () => {
@@ -596,7 +648,7 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
   if (!mounted) return null;
 
   return (
-    <div className="p-6 bg-card text-card-foreground shadow-lg rounded-xl border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border shadow-sm rounded-xl animate-fade-in">
+    <div className="p-8 md:p-10 bg-card text-card-foreground shadow-lg rounded-xl border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm animate-fade-in">
       {step > 0 && (
         <div className="relative h-1.5 w-full bg-muted rounded-full mb-6 overflow-hidden">
           <div className="h-full bg-gradient-to-r from-primary to-accent transition-all duration-500 rounded-full" style={{ width: `${progress}%` }} />
@@ -604,21 +656,21 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
         </div>
       )}
 
-      <div className="flex gap-1 mb-8 overflow-x-auto pb-1 hide-scrollbar">
+      <div className="flex gap-2 mb-10 overflow-x-auto pb-2 hide-scrollbar">
         {STEPS.map((s, i) => {
           const Icon = s.icon;
           return (
-            <button key={s.id} className={`flex flex-col flex-1 min-w-[56px] items-center gap-1.5 p-2 rounded-md transition-all cursor-pointer hover:bg-muted/50 ${step === i ? "bg-primary/10" : ""}`} onClick={() => setStep(i)} type="button">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all shadow-sm ${step === i ? "bg-primary text-primary-foreground border-primary shadow-md" : step > i ? "bg-emerald-500 text-white border-emerald-500" : "bg-background text-muted-foreground border-input"}`}>{step > i ? <Check size={12} /> : <Icon size={12} />}</div>
-              <span className={`text-[0.7rem] font-medium whitespace-nowrap transition-colors ${step === i ? "text-primary font-bold" : "text-muted-foreground"}`}>{s.title}</span>
+            <button key={s.id} className={`flex flex-col flex-1 min-w-[65px] items-center gap-2 p-3 rounded-xl transition-all cursor-pointer hover:bg-muted/50 ${step === i ? "bg-primary/10" : ""}`} onClick={() => setStep(i)} type="button">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all shadow-sm ${step === i ? "bg-primary text-primary-foreground border-primary shadow-md scale-110" : step > i ? "bg-emerald-500 text-white border-emerald-500" : "bg-background text-muted-foreground border-input"}`}>{step > i ? <Check size={14} /> : <Icon size={14} />}</div>
+              <span className={`text-sm font-semibold whitespace-nowrap transition-colors mt-1 ${step === i ? "text-primary" : "text-muted-foreground"}`}>{s.title}</span>
             </button>
           );
         })}
       </div>
 
-      <div className="mb-6 mt-2">
-        <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight mb-2">{React.createElement(STEPS[step].icon, { size: 20, color: 'var(--primary)' })} {STEPS[step].title}</h2>
-        <p className="text-sm text-muted-foreground">{STEPS[step].desc}</p>
+      <div className="mb-8 mt-4">
+        <h2 className="flex items-center gap-3 text-3xl font-bold tracking-tight mb-3">{React.createElement(STEPS[step].icon, { size: 28, color: 'var(--primary)' })} {STEPS[step].title}</h2>
+        <p className="text-base text-muted-foreground">{STEPS[step].desc}</p>
       </div>
 
       <form onSubmit={handleSubmit}>
@@ -633,22 +685,31 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
               {isUploading ? <Loader2 size={36} className="spin-icon" color="var(--primary)" /> : <div className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer transition-colors bg-muted/30 hover:bg-muted/50 hover:border-primary flex flex-col items-center gap-3-icon-wrap"><Upload size={28} /></div>}
               <p className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer transition-colors bg-muted/30 hover:bg-muted/50 hover:border-primary flex flex-col items-center gap-3-title">{isUploading ? 'Parsing...' : 'Drop your resume here'}</p>
               <p className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer transition-colors bg-muted/30 hover:bg-muted/50 hover:border-primary flex flex-col items-center gap-3-sub">PDF, DOCX, TXT, or MD</p>
-              {uploadedFile && !isUploading && <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 text-sm font-medium mt-2"><FileText size={12} /> {uploadedFile}</div>}
+              {uploadedFile && !isUploading && <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 text-base font-semibold mt-2"><FileText size={12} /> {uploadedFile}</div>}
               <input ref={fileRef} type="file" accept=".txt,.md,.pdf,.docx" onChange={e => { const f = e.target.files?.[0]; if (f) processFile(f); }} style={{ display: 'none' }} />
             </div>
             {uploadMsg && <div className={`upload-message animate-fade-in ${uploadMsg.startsWith('✅') ? 'success' : 'error'}`}>{uploadMsg}</div>}
             <div className="flex items-center gap-4 my-6 text-sm text-muted-foreground uppercase tracking-widest before:flex-1 before:h-px before:bg-border after:flex-1 after:h-px after:bg-border"><span>OR</span></div>
-            <button type="button" onClick={nextStep} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 full-width"><FileText size={16} /> Start from Scratch</button>
+            <button type="button" onClick={nextStep} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-base font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-6 py-3 text-base full-width"><FileText size={16} /> Start from Scratch</button>
           </div>
         )}
 
         {/* === STEP 1: Personal === */}
-        {step === 1 && <PersonalSection />}
+        {step === 1 && (
+          <PersonalSection 
+            data={data.personal} 
+            template={data.template} 
+            updatePersonal={store.updatePersonal} 
+          />
+        )}
 
         {/* === STEP 2: Target & JD === */}
         {step === 2 && (
           <div className="flex flex-col gap-6 animate-in fade-in-50 duration-500 animate-fade-in">
-            <TargetAndSkillsSection
+              <TargetAndSkillsSection
+              targetRole={data.targetRole}
+              jobDescription={data.jobDescription}
+              updateField={store.updateField}
               loadingSuggestion={loadingSuggestion}
               fetchSuggestion={fetchSuggestion}
               handleAddChip={handleAddChip}
@@ -664,17 +725,17 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
         {step === 3 && (
           <div className="flex flex-col gap-6 animate-in fade-in-50 duration-500 animate-fade-in">
             <div className="grid gap-2">
-              <div className="flex items-center justify-between gap-2">
-                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"><Code size={14} /> Skills {loadingSuggestion === 'skills' && <Loader2 size={13} className="spin-icon inline-loader" />}</label>
-                <button type="button" onClick={() => fetchSuggestion('skills', data.targetRole || data.skills.join(', ') || 'general')} disabled={loadingSuggestion === 'skills'} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-accent text-accent hover:bg-accent/10 h-8 px-3 gap-1.5" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}>
-                  {loadingSuggestion === 'skills' ? <><Loader2 size={12} className="spin-icon" /> Suggesting...</> : <><Sparkles size={12} /> AI Suggest Skills</>}
+              <div className="flex items-center justify-between gap-3">
+                <label className="text-base font-semibold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"><Code size={18} /> Skills {loadingSuggestion === 'skills' && <Loader2 size={16} className="spin-icon inline-loader" />}</label>
+                <button type="button" onClick={() => fetchSuggestion('skills', data.targetRole || data.skills.join(', ') || 'general')} disabled={loadingSuggestion === 'skills'} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-base font-semibold transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-accent text-accent hover:bg-accent/10 h-10 px-4 gap-2">
+                  {loadingSuggestion === 'skills' ? <><Loader2 size={14} className="spin-icon" /> Suggesting...</> : <><Sparkles size={14} /> AI Suggest Skills</>}
                 </button>
               </div>
               <div className="flex items-center gap-2">
                 <DebouncedInput type="text" value={skillInput} onChangeValue={val => setSkillInput(val)}
                   onKeyDown={e => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); handleAddChip('skills', skillInput, setSkillInput); onSkillsChange(); } }}
-                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" placeholder="Type a skill and press Enter" delay={10} />
-                <button type="button" onClick={() => { handleAddChip('skills', skillInput, setSkillInput); onSkillsChange(); }} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-10 w-10 shrink-0"><Plus size={16} /></button>
+                  className="flex w-full rounded-md border border-input bg-background px-4 py-3 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" placeholder="Type a skill and press Enter" delay={10} />
+                <button type="button" onClick={() => { handleAddChip('skills', skillInput, setSkillInput); onSkillsChange(); }} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-base font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-10 w-10 shrink-0"><Plus size={16} /></button>
               </div>
               {data.skills.length > 0 && (
                 <div className="skill-chips">
@@ -685,7 +746,7 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
               )}
               <SuggestionBubble field="skills" />
               {data.jobDescription && (
-                <button type="button" onClick={() => fetchSuggestion('skills', `Extract the most important technical skills and keywords from this JD: ${data.jobDescription.substring(0, 500)}`)} disabled={loadingSuggestion === 'skills'} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-accent text-accent hover:bg-accent/10 h-8 px-3 gap-1.5" style={{ marginTop: '0.5rem', borderColor: 'var(--secondary)', color: 'var(--secondary)' }}>
+                <button type="button" onClick={() => fetchSuggestion('skills', `Extract the most important technical skills and keywords from this JD: ${data.jobDescription.substring(0, 500)}`)} disabled={loadingSuggestion === 'skills'} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-accent text-accent hover:bg-accent/10 h-10 px-4 text-base gap-1.5" style={{ marginTop: '0.5rem', borderColor: 'var(--secondary)', color: 'var(--secondary)' }}>
                   <Target size={13} /> Extract Skills from JD
                 </button>
               )}
@@ -699,6 +760,14 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
              handleRewriteBullets={handleRewriteBullets} 
              handleGenerateRoleBullets={handleGenerateRoleBullets} 
              bulletLoading={bulletLoading} 
+             experience={data.experience}
+             updateWork={store.updateWork}
+             moveWork={store.moveWorkEntry}
+             addWorkEntry={store.addWorkEntry}
+             removeWorkEntry={store.removeWorkEntry}
+             updateBullet={store.updateBullet}
+             removeBullet={store.removeBullet}
+             addBullet={store.addBullet}
           />
         )}
 
@@ -706,31 +775,45 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
         {step === 5 && (
           <ProjectsSection 
             handleRewriteProjectDesc={handleRewriteProjectDesc}
+            handleSuggestTechStack={handleSuggestTechStack}
             loadingSuggestion={loadingSuggestion}
+            projects={data.projects}
+            updateProject={store.updateProject}
+            moveProject={store.moveProject}
+            addProject={store.addProject}
+            removeProject={store.removeProject}
           />
         )}
 
         {/* === STEP 6: Education === */}
-        {step === 6 && <EducationSection />}
+        {step === 6 && (
+          <EducationSection 
+            education={data.education}
+            updateEducation={store.updateEducation}
+            moveEducation={store.moveEducation}
+            addEducation={store.addEducation}
+            removeEducation={store.removeEducation}
+          />
+        )}
 
         {/* === STEP 7: Review & Generate === */}
         {step === 7 && (
           <div className="flex flex-col gap-6 animate-in fade-in-50 duration-500 animate-fade-in">
             {/* Summary */}
-            <div className="grid gap-2">
+            <div className="grid gap-3">
               <div className="flex items-center justify-between gap-2">
-                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"><Sparkles size={14} /> Professional Summary</label>
-                <button type="button" onClick={generateSummary} disabled={summaryLoading} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-accent text-accent hover:bg-accent/10 h-8 px-3 gap-1.5">
-                  {summaryLoading ? <><Loader2 size={13} className="spin-icon" /> Generating...</> : <><Sparkles size={13} /> AI Auto-fill</>}
+                <label className="text-base font-semibold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"><Sparkles size={18} /> Professional Summary</label>
+                <button type="button" onClick={generateSummary} disabled={summaryLoading} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-base font-semibold transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-accent text-accent hover:bg-accent/10 h-10 px-4 gap-2">
+                  {summaryLoading ? <><Loader2 size={16} className="spin-icon" /> Generating...</> : <><Sparkles size={16} /> AI Auto-fill</>}
                 </button>
               </div>
-              <textarea value={data.summary} onChange={e => store.updateField('summary', e.target.value)} className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" rows={3} placeholder="A results-driven software engineer with 5+ years..." />
-              <p className="text-[0.85rem] text-muted-foreground italic">Click &quot;AI Auto-fill&quot; to generate from your data, or write your own.</p>
+              <textarea value={data.summary} onChange={e => store.updateField('summary', e.target.value)} className="flex w-full rounded-md border border-input bg-background px-4 py-3 text-base ring-offset-background file:border-0 file:bg-transparent file:text-base file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" rows={4} placeholder="A results-driven software engineer with 5+ years..." />
+              <p className="text-[0.95rem] text-muted-foreground italic">Click &quot;AI Auto-fill&quot; to generate from your data, or write your own.</p>
             </div>
 
             {/* Template Selector */}
             <div className="grid gap-2">
-              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"><FileText size={14} /> Resume Template</label>
+              <label className="text-base font-semibold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"><FileText size={14} /> Resume Template</label>
               <p className="text-[0.85rem] text-muted-foreground italic" style={{ marginBottom: '0.6rem' }}>Choose a layout for your resume. The preview updates instantly.</p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
                 {([
@@ -856,12 +939,12 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
 
             {/* Certifications */}
             <div className="grid gap-2">
-              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"><Award size={14} /> Certifications</label>
+              <label className="text-base font-semibold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"><Award size={14} /> Certifications</label>
               <div className="flex items-center gap-2">
                 <input type="text" value={certInput} onChange={e => setCertInput(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddChip('certifications', certInput, setCertInput); } }}
-                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" placeholder="AWS Certified Solutions Architect" />
-                <button type="button" onClick={() => handleAddChip('certifications', certInput, setCertInput)} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-10 w-10 shrink-0"><Plus size={16} /></button>
+                  className="flex w-full rounded-md border border-input bg-background px-4 py-3 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" placeholder="AWS Certified Solutions Architect" />
+                <button type="button" onClick={() => handleAddChip('certifications', certInput, setCertInput)} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-base font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-10 w-10 shrink-0"><Plus size={16} /></button>
               </div>
               {data.certifications.length > 0 && (
                 <div className="skill-chips">{data.certifications.map((c, i) => (
@@ -872,12 +955,12 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
 
             {/* Languages */}
             <div className="grid gap-2">
-              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"><Languages size={14} /> Languages</label>
+              <label className="text-base font-semibold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"><Languages size={14} /> Languages</label>
               <div className="flex items-center gap-2">
                 <input type="text" value={langInput} onChange={e => setLangInput(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddChip('languages', langInput, setLangInput); } }}
-                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" placeholder="English (Native), Hindi (Fluent)" />
-                <button type="button" onClick={() => handleAddChip('languages', langInput, setLangInput)} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-10 w-10 shrink-0"><Plus size={16} /></button>
+                  className="flex w-full rounded-md border border-input bg-background px-4 py-3 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" placeholder="English (Native), Hindi (Fluent)" />
+                <button type="button" onClick={() => handleAddChip('languages', langInput, setLangInput)} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-base font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-10 w-10 shrink-0"><Plus size={16} /></button>
               </div>
               {data.languages.length > 0 && (
                 <div className="skill-chips">{data.languages.map((l, i) => (
@@ -889,8 +972,8 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
             {/* Resume Readiness Check */}
             <div className="grid gap-2">
               <div className="flex items-center justify-between gap-2">
-                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"><BarChart3 size={14} /> Resume Readiness Check</label>
-                <button type="button" onClick={handleReviewReadiness} disabled={reviewLoading} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-accent text-accent hover:bg-accent/10 h-8 px-3 gap-1.5">
+                <label className="text-base font-semibold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"><BarChart3 size={14} /> Resume Readiness Check</label>
+                <button type="button" onClick={handleReviewReadiness} disabled={reviewLoading} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-accent text-accent hover:bg-accent/10 h-10 px-4 text-base gap-1.5">
                   {reviewLoading ? <><Loader2 size={13} className="spin-icon" /> Analyzing...</> : <><Shield size={13} /> Check Readiness</>}
                 </button>
               </div>
@@ -917,7 +1000,7 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
                       </p>
                     </div>
                     {reviewResult.canAutoFix && (
-                      <button type="button" onClick={handleApplyAllFixes} disabled={!!fixingType} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2" style={{ fontSize: '0.78rem', padding: '0.5rem 0.85rem', whiteSpace: 'nowrap' }}>
+                      <button type="button" onClick={handleApplyAllFixes} disabled={!!fixingType} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-base font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-6 py-3 text-base" style={{ fontSize: '0.78rem', padding: '0.5rem 0.85rem', whiteSpace: 'nowrap' }}>
                         {fixingType ? <><Loader2 size={13} className="spin-icon" /> Fixing...</> : <><Zap size={13} /> Apply All Fixes</>}
                       </button>
                     )}
@@ -1031,7 +1114,7 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
 
             {/* Template Selector */}
             <div className="grid gap-2">
-              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2">Resume Template</label>
+              <label className="text-base font-semibold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2">Resume Template</label>
               <div className="template-grid">
                 {TEMPLATES.map(t => (
                   <button key={t.id} type="button" className={`template-card ${data.template === t.id ? 'active' : ''}`} onClick={() => store.updateField('template', t.id)}>
@@ -1048,7 +1131,7 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
     
 
         <div className="step-nav" style={{ alignItems: 'center' }}>
-          {step > 0 && <button type="button" onClick={prevStep} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"><ChevronLeft size={16} /> Back</button>}
+          {step > 0 && <button type="button" onClick={prevStep} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-base font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-11 px-6 py-3 text-base"><ChevronLeft size={16} /> Back</button>}
           
           <div style={{ flex: 1 }} />
           
@@ -1056,24 +1139,24 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
             <button 
               type="button" 
               onClick={() => setShowConfirmReset(true)}
-              className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2" 
+              className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-base font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-11 px-6 py-3 text-base" 
               title="Clear all text and start over"
               style={{ color: 'var(--error)', borderColor: 'rgba(239,68,68,0.3)', marginRight: '1rem', padding: '0.6rem 0.75rem' }}
             >
               <RefreshCcw size={16} /> <span className="hide-on-mobile">Start Fresh</span>
             </button>
           )}
-          {step > 0 && !isLastStep && <button type="button" onClick={nextStep} disabled={!canProceed(step)} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">Next <ChevronRight size={16} /></button>}
+          {step > 0 && !isLastStep && <button type="button" onClick={nextStep} disabled={!canProceed(step)} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-base font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-6 py-3 text-base">Next <ChevronRight size={16} /></button>}
           
           {isLastStep && (
             <div style={{ display: 'flex', gap: '0.75rem' }}>
-              <button type="button" onClick={handleGenerateCoverLetter} disabled={coverLetterLoading || !canProceed(1)} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 generate-btn" style={{ borderColor: 'var(--accent)', color: 'var(--accent)' }}>
+              <button type="button" onClick={handleGenerateCoverLetter} disabled={coverLetterLoading || !canProceed(1)} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-base font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-11 px-6 py-3 text-base generate-btn" style={{ borderColor: 'var(--accent)', color: 'var(--accent)' }}>
                 {coverLetterLoading ? <><Loader2 size={16} className="spin-icon" /> Generating...</> : <><Sparkles size={16} /> Cover Letter</>}
               </button>
-              <button type="button" onClick={handleSaveDraft} disabled={isSavingDraft || !canProceed(1) || !canProceed(2)} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 generate-btn" style={{ color: 'var(--primary)', borderColor: 'var(--primary)' }}>
+              <button type="button" onClick={handleSaveDraft} disabled={isSavingDraft || !canProceed(1) || !canProceed(2)} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-base font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-11 px-6 py-3 text-base generate-btn" style={{ color: 'var(--primary)', borderColor: 'var(--primary)' }}>
                 {isSavingDraft ? <><Loader2 size={16} className="spin-icon" /> Saving...</> : <><Check size={16} /> Save Draft</>}
               </button>
-              <button type="submit" disabled={isLoading || !canProceed(1) || !canProceed(2)} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 generate-btn">
+              <button type="submit" disabled={isLoading || !canProceed(1) || !canProceed(2)} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-base font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-6 py-3 text-base generate-btn">
                 {isLoading ? <><Loader2 size={16} className="spin-icon" /> Generating...</> : <><Send size={16} /> Generate Resume</>}
               </button>
             </div>
@@ -1100,7 +1183,7 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', color: 'var(--accent)', fontSize: '1.1rem' }}>
               <Sparkles size={18} /> Generated Cover Letter
             </h3>
-            <textarea value={coverLetter} onChange={(e) => setCoverLetter(e.target.value)} className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 jd-textarea" style={{ minHeight: '300px', cursor: 'text' }} />
+            <textarea value={coverLetter} onChange={(e) => setCoverLetter(e.target.value)} className="flex w-full rounded-md border border-input bg-background px-4 py-3 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 jd-textarea" style={{ minHeight: '300px', cursor: 'text' }} />
             <p className="text-[0.85rem] text-muted-foreground italic" style={{ marginTop: '0.5rem' }}>You can directly edit this cover letter before copying.</p>
           </div>
         )}
@@ -1115,7 +1198,7 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
               Are you sure you want to clear all form data and start a new resume from scratch? This cannot be undone.
             </p>
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-              <button type="button" onClick={() => setShowConfirmReset(false)} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+              <button type="button" onClick={() => setShowConfirmReset(false)} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-base font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-11 px-6 py-3 text-base">
                 Cancel
               </button>
               <button 
@@ -1125,7 +1208,7 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
                   setCoverLetter(null);
                   setShowConfirmReset(false);
                 }} 
-                className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+                className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-base font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-6 py-3 text-base"
                 style={{ background: 'var(--error)', borderColor: 'var(--error)' }}
               >
                 Yes, Clear Everything

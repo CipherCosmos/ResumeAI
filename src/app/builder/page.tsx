@@ -3,8 +3,13 @@
 import React, { useState, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import ResumeForm from '@/components/ResumeForm';
-import ResumePreview from '@/components/ResumePreview';
+
+const ResumePreview = dynamic(() => import('@/components/ResumePreview'), {
+  loading: () => <div className="flex h-full min-h-[500px] items-center justify-center bg-card rounded-xl border border-dashed"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground mr-2" /> <span className="text-muted-foreground text-sm font-medium">Loading Preview Engine...</span></div>,
+  ssr: false
+});
 import { ResumeData } from '@/types/resume';
 import { useResumeStore } from '@/store/useResumeStore';
 import { AlertCircle, Loader2 } from 'lucide-react';
@@ -83,7 +88,7 @@ export default function Home() {
         </div>
       )}
 
-      <main className={`grid gap-6 md:gap-8 items-start transition-all duration-400 ease-in-out ${hasResume ? 'grid-cols-1 lg:grid-cols-[2fr_3fr] xl:gap-10' : 'grid-cols-1 max-w-4xl mx-auto'}`}>
+      <main className={`grid gap-6 md:gap-8 items-start transition-all duration-400 ease-in-out ${hasResume ? 'grid-cols-1 xl:grid-cols-2 xl:gap-12 w-full' : 'grid-cols-1 max-w-5xl mx-auto'}`}>
         <div className="order-1 rounded-xl border bg-card shadow-sm">
           <ResumeForm onSubmit={handleGenerateResume} isLoading={isLoading} />
         </div>

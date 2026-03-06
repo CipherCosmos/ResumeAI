@@ -45,6 +45,11 @@ interface ResumeState {
     // Bulk update (e.g., from parse)
     setResumeData: (data: Partial<ResumeData>) => void;
     resetForm: () => void;
+
+    // Element Sorting
+    moveWorkEntry: (id: string, direction: 'up' | 'down') => void;
+    moveProject: (id: string, direction: 'up' | 'down') => void;
+    moveEducation: (id: string, direction: 'up' | 'down') => void;
 }
 
 export const useResumeStore = create<ResumeState>()(
@@ -186,6 +191,33 @@ export const useResumeStore = create<ResumeState>()(
                 set((state) => ({
                     data: { ...state.data, ...newData },
                 })),
+
+            moveWorkEntry: (id, direction) => set((state) => {
+                const arr = [...state.data.experience];
+                const index = arr.findIndex((x) => x.id === id);
+                if ((direction === 'up' && index === 0) || (direction === 'down' && index === arr.length - 1) || index === -1) return state;
+                const newIndex = direction === 'up' ? index - 1 : index + 1;
+                [arr[index], arr[newIndex]] = [arr[newIndex], arr[index]];
+                return { data: { ...state.data, experience: arr } };
+            }),
+
+            moveProject: (id, direction) => set((state) => {
+                const arr = [...state.data.projects];
+                const index = arr.findIndex((x) => x.id === id);
+                if ((direction === 'up' && index === 0) || (direction === 'down' && index === arr.length - 1) || index === -1) return state;
+                const newIndex = direction === 'up' ? index - 1 : index + 1;
+                [arr[index], arr[newIndex]] = [arr[newIndex], arr[index]];
+                return { data: { ...state.data, projects: arr } };
+            }),
+
+            moveEducation: (id, direction) => set((state) => {
+                const arr = [...state.data.education];
+                const index = arr.findIndex((x) => x.id === id);
+                if ((direction === 'up' && index === 0) || (direction === 'down' && index === arr.length - 1) || index === -1) return state;
+                const newIndex = direction === 'up' ? index - 1 : index + 1;
+                [arr[index], arr[newIndex]] = [arr[newIndex], arr[index]];
+                return { data: { ...state.data, education: arr } };
+            }),
 
             resetForm: () => set({ data: emptyResumeData, step: 0 }),
         }),

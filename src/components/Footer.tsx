@@ -19,7 +19,7 @@ export default function Footer() {
           © {new Date().getFullYear()} ResumeAI — Build ATS-optimized resumes with AI
         </p>
 
-        <div className="flex items-center gap-2 lg:gap-4 text-xs font-medium text-muted-foreground">
+        <div className="flex items-center gap-2 lg:gap-4 text-sm font-medium text-muted-foreground">
           <span>2 credits = 1 resume</span>
           <span className="opacity-50">·</span>
           <span>1 credit = 1 parse or ATS score</span>

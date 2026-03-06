@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Target, ClipboardList } from 'lucide-react';
-import { useResumeStore } from '@/store/useResumeStore';
 import { DebouncedInput, DebouncedTextarea } from '@/components/DebouncedInput';
 
 interface Props {
+  targetRole: string;
+  jobDescription?: string;
+  updateField: any;
   SuggestionBubble: React.FC<{ field: string }>;
   loadingSuggestion?: string | null;
   fetchSuggestion?: any;
@@ -13,20 +15,24 @@ interface Props {
   setSkillInput?: any;
 }
 
-export function TargetAndSkillsSection({ SuggestionBubble }: Props) {
-  const { data, updateField } = useResumeStore();
+export const TargetAndSkillsSection = memo(function TargetAndSkillsSection({ 
+  targetRole, 
+  jobDescription, 
+  updateField, 
+  SuggestionBubble 
+}: Props) {
 
   return (
     <>
       <div className="grid gap-2">
         <div className="flex items-center justify-between gap-2">
-          <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"><Target size={14} /> Target Job Title <span className="text-destructive font-normal">*</span></label>
+          <label className="text-base font-semibold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"><Target size={14} /> Target Job Title <span className="text-destructive font-normal">*</span></label>
         </div>
         <DebouncedInput
           type="text"
-          value={data.targetRole}
+          value={targetRole}
           onChangeValue={(val) => updateField('targetRole', val)}
-          className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex w-full rounded-md border border-input bg-background px-4 py-3 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
           placeholder="Senior Software Engineer"
           required
         />
@@ -35,11 +41,11 @@ export function TargetAndSkillsSection({ SuggestionBubble }: Props) {
       </div>
 
       <div className="grid gap-2">
-        <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"><ClipboardList size={14} /> Job Description <span className="text-[0.65rem] font-medium px-2 py-0.5 bg-muted rounded-full text-muted-foreground">optional</span></label>
+        <label className="text-base font-semibold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"><ClipboardList size={14} /> Job Description <span className="text-[0.75rem] font-medium px-2 py-0.5 bg-muted rounded-full text-muted-foreground">optional</span></label>
         <DebouncedTextarea
-          value={data.jobDescription || ''}
+          value={jobDescription || ''}
           onChangeValue={(val) => updateField('jobDescription', val)}
-          className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 jd-textarea"
+          className="flex w-full rounded-md border border-input bg-background px-4 py-3 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 jd-textarea"
           rows={10}
           placeholder="Paste the full job description here for maximum ATS optimization..."
         />
@@ -47,4 +53,7 @@ export function TargetAndSkillsSection({ SuggestionBubble }: Props) {
       </div>
     </>
   );
-}
+}, (prevProps, nextProps) => {
+  return prevProps.targetRole === nextProps.targetRole &&
+         prevProps.jobDescription === nextProps.jobDescription;
+});

@@ -28,7 +28,7 @@ export default function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-8">
         <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+          <div className="flex h-10 w-10 text-base items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <Sparkles size={18} />
           </div>
           <span className="text-xl font-bold tracking-tight">ResumeAI</span>
@@ -38,7 +38,7 @@ export default function Header() {
           <nav className={`md:flex items-center gap-6 ${mobileOpen ? 'absolute top-16 left-0 w-full flex-col bg-background p-4 border-b shadow-lg md:static md:w-auto md:p-0 md:border-none md:shadow-none' : 'hidden'}`}>
             {NAV_ITEMS.map(item => (
               <Link key={item.href} href={item.href}
-                className={`text-sm font-medium transition-colors hover:text-primary ${pathname === item.href ? 'text-primary' : 'text-muted-foreground'}`}
+                className={`text-base font-semibold transition-colors hover:text-primary ${pathname === item.href ? 'text-primary' : 'text-muted-foreground'}`}
                 onClick={() => setMobileOpen(false)}>
                 {item.label}
               </Link>

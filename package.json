@@ -3,12 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "setup": "node scripts/setup.js",
     "dev": "next dev",
-    "predev": "prisma db push",
+    "predev": "npm run setup && prisma db push",
     "build": "prisma generate && next build",
-    "prebuild": "prisma db push",
-    "postinstall": "prisma generate",
+    "prebuild": "npm run setup && prisma db push",
+    "postinstall": "npm run setup && prisma generate",
     "start": "next start",
+    "prestart": "npm run setup",
     "lint": "eslint"
   },
   "dependencies": {
@@ -32,7 +34,9 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-markdown": "^10.1.0",
+    "react-to-print": "^3.3.0",
     "remark-gfm": "^4.0.1",
+    "sonner": "^2.0.7",
     "stripe": "^20.4.0",
     "tailwind-merge": "^3.5.0",
     "tailwindcss-animate": "^1.0.7",

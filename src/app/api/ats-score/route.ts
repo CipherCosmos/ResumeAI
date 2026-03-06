@@ -2,7 +2,15 @@ import { callAI } from '@/lib/ai';
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { deductCredits, checkCredits, CREDIT_COSTS } from '@/lib/credits';
+import { deductCredits, checkCredits } from '@/lib/credits';
+import { z } from 'zod';
+
+const atsScoreSchema = z.object({
+    score: z.number().min(0).max(100),
+    matchedKeywords: z.array(z.string()),
+    missingKeywords: z.array(z.string()),
+    suggestions: z.array(z.string())
+});
 
 export async function POST(req: Request) {
     try {
@@ -30,21 +38,12 @@ export async function POST(req: Request) {
 
         const prompt = `You are an ATS (Applicant Tracking System) analysis expert. Analyze the resume against the job description.
 
-Return ONLY valid JSON, no other text:
-{
-  "score": <number 0-100>,
-  "matchedKeywords": ["keyword1", "keyword2"],
-  "missingKeywords": ["keyword1", "keyword2"],
-  "suggestions": ["suggestion1", "suggestion2"]
-}
-
 Rules:
 - Score 0-100 based on keyword match, skills alignment, and experience relevance
 - matchedKeywords: skills/tech/qualifications found in BOTH resume and JD
 - missingKeywords: important skills/requirements in JD but NOT in resume
 - suggestions: 2-4 actionable tips to improve the match
 - Be thorough — check technical skills, soft skills, certifications, years of experience
-- Do NOT include any text outside the JSON
 
 Job Description:
 ---
@@ -58,7 +57,10 @@ ${resume.substring(0, 3000)}
 `;
 
         const aiResult = await callAI({
-            messages: [{ role: 'user', content: prompt }],
+            messages: [
+                { role: 'system', content: 'You are an ATS analysis expert. You MUST respond ONLY with a valid JSON object matching exactly this schema: { "score": <number 0-100>, "matchedKeywords": ["string"], "missingKeywords": ["string"], "suggestions": ["string"] }. Do not include markdown formatting like ```json.' },
+                { role: 'user', content: prompt }
+            ],
             temperature: 0.2,
             max_tokens: 600,
         });
@@ -67,14 +69,14 @@ ${resume.substring(0, 3000)}
         content = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
 
         try {
-            const result = JSON.parse(content);
+            const result = atsScoreSchema.parse(JSON.parse(content));
             // SUCCESS — now deduct credits
             await deductCredits(userId, 'ATS_SCORE', 'ATS Compatibility Score');
             return NextResponse.json(result);
-        } catch {
-            console.error('ATS score parse error:', content.substring(0, 200));
+        } catch (parseError) {
+            console.error('ATS score parse error:', parseError, content.substring(0, 200));
             // DON'T deduct — AI returned garbage
-            return NextResponse.json({ error: 'Invalid AI response. Please try again.' }, { status: 500 });
+            return NextResponse.json({ error: 'Invalid AI response format. Please try again.' }, { status: 500 });
         }
     } catch (err) {
         console.error('ATS score error:', err);
