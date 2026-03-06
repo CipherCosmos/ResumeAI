@@ -35,21 +35,16 @@ export async function POST(req: Request) {
 
         if (userId && tokensToAdd > 0) {
             try {
-                await prisma.user.update({
-                    where: { id: userId },
-                    data: {
-                        credits: {
-                            increment: tokensToAdd,
-                        },
-                    },
-                });
-
-                // Optionally create a Transaction log in the DB here
-
-                console.log(`Successfully added ${tokensToAdd} tokens to user ${userId}`);
+                const { addCredits } = await import('@/lib/credits');
+                await addCredits(
+                    userId,
+                    tokensToAdd,
+                    'PURCHASE',
+                    `Stripe Purchase: ${tokensToAdd} Credits (Session: ${session.id.slice(-8)})`
+                );
+                console.log(`Successfully added ${tokensToAdd} tokens to user ${userId} via addCredits helper`);
             } catch (error) {
                 console.error('Failed to update user credits after successful payment:', error);
-                // We still return 200 to Stripe so it doesn't retry, but log the error
             }
         }
     }

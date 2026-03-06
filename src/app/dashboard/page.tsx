@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { FileText, Clock, Trash2, Coins, ArrowRight, Loader2, Plus, X, Eye, Share2, Sparkles, Copy, Check } from 'lucide-react';
 import ResumePreview from '@/components/ResumePreview';
@@ -25,12 +25,34 @@ interface TransactionItem {
 }
 
 export default function DashboardPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    }>
+      <DashboardContent />
+    </Suspense>
+  );
+}
+
+function DashboardContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [resumes, setResumes] = useState<ResumeItem[]>([]);
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
   const [credits, setCredits] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (searchParams?.get('purchase') === 'true') {
+      setShowPricing(true);
+      // Clean up the URL
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [searchParams]);
 
   // Resume viewing modal state
   const [viewingResume, setViewingResume] = useState<any | null>(null);
@@ -47,6 +69,28 @@ export default function DashboardPage() {
   const [clLoading, setClLoading] = useState(false);
   const [clResult, setClResult] = useState<string | null>(null);
   const [clCopied, setClCopied] = useState(false);
+
+  // Billing states
+  const [showPricing, setShowPricing] = useState(false);
+  const [purchaseLoading, setPurchaseLoading] = useState<string | null>(null);
+
+  const handlePurchase = async (packageId: string) => {
+    setPurchaseLoading(packageId);
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ packageId }),
+      });
+      const { url, error } = await res.json();
+      if (url) window.location.href = url;
+      else alert(error || 'Failed to start checkout');
+    } catch {
+      alert('Network error');
+    } finally {
+      setPurchaseLoading(null);
+    }
+  };
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -197,17 +241,62 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="bg-primary text-primary-foreground cursor-pointer hover:bg-primary/90 transition-colors shadow-lg group border-none" onClick={() => router.push('/builder')}>
+        <Card className="bg-primary text-primary-foreground cursor-pointer hover:bg-primary/90 transition-colors shadow-lg group border-none" onClick={() => setShowPricing(true)}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-semibold">New Resume</CardTitle>
+            <CardTitle className="text-sm font-semibold">Add Credits</CardTitle>
             <Plus className="h-4 w-4" />
           </CardHeader>
           <CardContent className="flex flex-col h-[calc(100%-4rem)] justify-end">
-            <p className="text-sm opacity-90 mb-4">Build a new ATS-optimized resume using AI</p>
-            <ArrowRight className="h-5 w-5 transform transition-transform group-hover:translate-x-1" />
+            <p className="text-sm opacity-90 mb-4">Top up your AI balance to generate more resumes</p>
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider">
+              Get more <ArrowRight className="h-4 w-4 transform transition-transform group-hover:translate-x-1" />
+            </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Pricing Modal */}
+      {showPricing && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <Card className="w-full max-w-2xl shadow-2xl">
+            <CardHeader className="relative">
+              <Button variant="ghost" size="icon" className="absolute top-4 right-4" onClick={() => setShowPricing(false)}>
+                <X className="h-5 w-5" />
+              </Button>
+              <CardTitle className="text-2xl font-bold text-center">Top Up AI Credits</CardTitle>
+              <CardDescription className="text-center">Choose a bundle to continue building with AI</CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 pb-8">
+              {[
+                { id: 'starter', name: 'Starter', tokens: 50, price: '$5', desc: 'Perfect for one job' },
+                { id: 'professional', name: 'Pro', tokens: 200, price: '$15', desc: 'For active seekers', featured: true },
+                { id: 'elite', name: 'Elite', tokens: 500, price: '$30', desc: 'Max value' },
+              ].map(pkg => (
+                <div 
+                  key={pkg.id} 
+                  className={`relative flex flex-col p-6 rounded-xl border-2 transition-all hover:scale-[1.02] ${pkg.featured ? 'border-primary bg-primary/5' : 'border-border'}`}
+                >
+                  {pkg.featured && <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Most Popular</span>}
+                  <h4 className="font-bold text-lg mb-1">{pkg.name}</h4>
+                  <div className="text-2xl font-bold mb-1">{pkg.price}</div>
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-primary mb-4">
+                    <Coins size={12} /> {pkg.tokens} AI Tokens
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-6 h-8">{pkg.desc}</p>
+                  <Button 
+                    className="w-full" 
+                    variant={pkg.featured ? 'default' : 'outline'}
+                    disabled={purchaseLoading === pkg.id}
+                    onClick={() => handlePurchase(pkg.id)}
+                  >
+                    {purchaseLoading === pkg.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Buy Now'}
+                  </Button>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Resume History */}
       <section className="mb-12">

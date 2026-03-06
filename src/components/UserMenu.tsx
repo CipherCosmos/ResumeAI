@@ -2,7 +2,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
-import { User, LogOut, CreditCard, ChevronDown, Coins } from 'lucide-react';
+import Link from 'next/link';
+import { User, LogOut, CreditCard, ChevronDown, Coins, Sparkles } from 'lucide-react';
 
 export default function UserMenu() {
   const { data: session, status } = useSession();
@@ -50,6 +51,9 @@ export default function UserMenu() {
             </div>
           </div>
           <div className="user-menu-divider" />
+          <Link href="/dashboard?purchase=true" className="user-menu-item" onClick={() => setOpen(false)}>
+            <Sparkles size={14} className="text-primary" /> Get More Tokens
+          </Link>
           <button className="user-menu-item" onClick={() => signOut({ callbackUrl: '/auth/signin' })}>
             <LogOut size={14} /> Sign Out
           </button>
