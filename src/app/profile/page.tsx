@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useSession, signOut } from 'next-auth/react';
+import { useSession, signOut, signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { User, Lock, Shield, Loader2, Save, Trash2, AlertTriangle, CreditCard, Link as LinkIcon, Briefcase } from 'lucide-react';
 
@@ -20,7 +20,7 @@ export default function ProfilePage() {
   const [passwordMsg, setPasswordMsg] = useState('');
   const [profileLoading, setProfileLoading] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
-  const [billingLoading, setBillingLoading] = useState<number | null>(null);
+  const [billingLoading, setBillingLoading] = useState<string | null>(null);
   const [billingMsg, setBillingMsg] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -91,14 +91,8 @@ export default function ProfilePage() {
 
   const handleAddCredits = async (packageId: string) => {
     setBillingMsg('');
-    // Use packageId to show loading state on the specific button
-    setBillingLoading(packageId === 'starter' ? 50 : packageId === 'professional' ? 200 : 500);
+    setBillingLoading(packageId);
     try {
-      if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
-         setBillingMsg('Stripe is not configured in this environment.');
-         return;
-      }
-
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -106,7 +100,7 @@ export default function ProfilePage() {
       });
       const data = await res.json();
       if (res.ok && data.url) {
-        window.location.href = data.url; // Redirect to Stripe Checkout
+        window.location.href = data.url;
       } else {
         setBillingMsg(data.error || 'Failed to initiate checkout');
       }
@@ -115,6 +109,10 @@ export default function ProfilePage() {
     } finally {
       setBillingLoading(null);
     }
+  };
+
+  const handleConnect = (provider: string) => {
+    signIn(provider, { callbackUrl: '/profile' });
   };
 
   const handleDeleteAccount = async () => {
@@ -252,7 +250,13 @@ export default function ProfilePage() {
                         <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>Not connected</div>
                       </div>
                     </div>
-                    <button className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-secondary text-secondary-foreground hover:bg-secondary/80 h-9 px-3" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}>Connect</button>
+                    <button 
+                      onClick={() => handleConnect('google')}
+                      className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-secondary text-secondary-foreground hover:bg-secondary/80 h-9 px-3" 
+                      style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}
+                    >
+                      Connect
+                    </button>
                   </div>
 
                   {/* GitHub */}
@@ -264,7 +268,13 @@ export default function ProfilePage() {
                         <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>Not connected</div>
                       </div>
                     </div>
-                    <button className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-secondary text-secondary-foreground hover:bg-secondary/80 h-9 px-3" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}>Connect</button>
+                    <button 
+                      onClick={() => handleConnect('github')}
+                      className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-secondary text-secondary-foreground hover:bg-secondary/80 h-9 px-3" 
+                      style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}
+                    >
+                      Connect
+                    </button>
                   </div>
                   
                   {/* LinkedIn */}
@@ -276,13 +286,19 @@ export default function ProfilePage() {
                         <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>Not connected</div>
                       </div>
                     </div>
-                    <button className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-secondary text-secondary-foreground hover:bg-secondary/80 h-9 px-3" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}>Connect</button>
+                    <button 
+                      onClick={() => handleConnect('linkedin')}
+                      className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-secondary text-secondary-foreground hover:bg-secondary/80 h-9 px-3" 
+                      style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}
+                    >
+                      Connect
+                    </button>
                   </div>
                 </div>
               </section>
             </div>
           )}
-
+ 
           {tab === 'billing' && (
             <div className="animate-slide-up">
               {/* Billing & Pricing */}
@@ -293,7 +309,7 @@ export default function ProfilePage() {
                 </div>
                 <div className="w-full">
                   <p style={{ fontSize: '0.9rem', opacity: 0.8, marginBottom: '1.5rem' }}>
-                    Choose a plan to top up your AI tokens. (Mock billing for testing purposes).
+                    Choose a plan to top up your AI tokens.
                   </p>
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -315,10 +331,10 @@ export default function ProfilePage() {
                 className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-secondary text-secondary-foreground hover:bg-secondary/80 h-10 px-4 py-2 w-full" 
                 disabled={billingLoading !== null}
               >
-                {billingLoading === 50 ? <><Loader2 size={16} className="spin-icon" /> Redirecting...</> : 'Buy Starter'}
+                {billingLoading === 'starter' ? <><Loader2 size={16} className="spin-icon" /> Redirecting...</> : 'Buy Starter'}
               </button>
             </div>
-
+ 
             {/* Pro Plan */}
             <div className="flex flex-col p-6 bg-card text-card-foreground border-2 border-primary shadow-md rounded-xl relative overflow-hidden transform md:-translate-y-2">
               <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-bl-lg">Most Popular</div>
@@ -338,10 +354,10 @@ export default function ProfilePage() {
                 className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-full" 
                 disabled={billingLoading !== null}
               >
-                {billingLoading === 200 ? <><Loader2 size={16} className="spin-icon" /> Redirecting...</> : 'Buy Professional'}
+                {billingLoading === 'professional' ? <><Loader2 size={16} className="spin-icon" /> Redirecting...</> : 'Buy Professional'}
               </button>
             </div>
-
+ 
             {/* Elite Plan */}
             <div className="flex flex-col p-6 bg-card text-card-foreground border shadow-sm rounded-xl relative overflow-hidden">
               <div className="mb-4">
@@ -360,7 +376,7 @@ export default function ProfilePage() {
                 className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-secondary text-secondary-foreground hover:bg-secondary/80 h-10 px-4 py-2 w-full" 
                 disabled={billingLoading !== null}
               >
-                {billingLoading === 500 ? <><Loader2 size={16} className="spin-icon" /> Redirecting...</> : 'Buy Elite'}
+                {billingLoading === 'elite' ? <><Loader2 size={16} className="spin-icon" /> Redirecting...</> : 'Buy Elite'}
               </button>
             </div>
           </div>
