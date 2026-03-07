@@ -14,8 +14,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const resume = await prisma.resume.findUnique({ where: { id }, select: { title: true } });
   return {
-    title: resume ? `${resume.title} — ResumeAI` : 'Resume Not Found',
-    description: resume ? `View ${resume.title} on ResumeAI` : 'This resume could not be found.',
+    title: resume ? `${resume.title} — ORBITAL` : 'Resume Not Found',
+    description: resume ? `View ${resume.title} on ORBITAL SYSTEMS` : 'This resume could not be found.',
   };
 }
 
@@ -75,7 +75,7 @@ export default async function PublicResumePage({ params }: Props) {
         <p>
           Generated with ✨{' '}
           <a href="/" style={{ color: 'var(--primary)', fontWeight: 600 }}>
-            ResumeAI
+            ORBITAL SYSTEMS
           </a>
         </p>
       </div>

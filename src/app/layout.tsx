@@ -18,8 +18,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ResumeAI — ATS-Optimized Professional Resumes",
-  description: "Craft ATS-optimized, professional resumes in seconds using AI. Upload your existing resume or build one from scratch.",
+  title: "ORBITAL SYSTEMS — ATS-Optimized Professional Resumes",
+  description: "Craft ATS-optimized, professional resumes in seconds using ORBITAL Intelligence. Upload your existing resume or build one from scratch.",
 };
 
 export default function RootLayout({
