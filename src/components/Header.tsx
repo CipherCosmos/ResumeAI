@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Sparkles, Menu, X, LogIn } from 'lucide-react';
+import { Sparkles, Menu, X, LogIn, ChevronRight } from 'lucide-react';
 import UserMenu from './UserMenu';
 import { Button } from '@/components/ui/button';
 import { useSession } from 'next-auth/react';
@@ -24,53 +24,50 @@ export default function Header() {
   if (pathname?.startsWith('/auth')) return null;
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-8">
-        <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
-          <div className="flex h-10 w-10 text-base items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Sparkles size={18} />
+    <header className="fixed top-0 z-[100] w-full border-b border-white/5 bg-background/40 backdrop-blur-2xl transition-all duration-300">
+      <div className="container mx-auto flex h-20 items-center justify-between px-6 md:px-10">
+        <Link href="/" className="flex items-center gap-4 transition-all hover:scale-105 group">
+          <div className="flex h-12 w-12 items-center justify-center bg-primary text-white skew-x-[-12deg] shadow-[0_0_20px_rgba(var(--primary-rgb),0.4)] group-hover:shadow-[0_0_30px_rgba(var(--primary-rgb),0.6)] transition-all">
+            <div className="skew-x-[12deg]"><Sparkles size={24} /></div>
           </div>
-          <span className="text-xl font-bold tracking-tight">ResumeAI</span>
+          <span className="text-2xl font-black tracking-tighter uppercase italic italic">Resume<span className="text-primary">AI</span></span>
         </Link>
 
         {session && (
-          <nav className={`md:flex items-center gap-6 ${mobileOpen ? 'absolute top-16 left-0 w-full flex-col bg-background/95 backdrop-blur-md p-6 border-b shadow-xl md:static md:w-auto md:p-0 md:bg-transparent md:border-none md:shadow-none' : 'hidden'}`}>
+          <nav className={`md:flex items-center gap-10 ${mobileOpen ? 'absolute top-20 left-0 w-full flex-col bg-zinc-950/95 backdrop-blur-2xl p-10 border-b border-white/10 shadow-2xl md:static md:w-auto md:p-0 md:bg-transparent md:border-none md:shadow-none animate-in slide-in-from-top-4 duration-300' : 'hidden'}`}>
             {NAV_ITEMS.map(item => {
               const isActive = pathname === item.href;
               return (
                 <Link key={item.href} href={item.href}
-                  className={`relative text-sm font-medium transition-all duration-200 py-1 ${isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                  className={`relative text-[0.7rem] font-black uppercase tracking-[0.3em] transition-all py-2 group ${isActive ? 'text-primary' : 'text-zinc-400 hover:text-white'}`}
                   onClick={() => setMobileOpen(false)}>
                   {item.label}
-                  {isActive && (
-                    <span className="absolute -bottom-[21px] left-0 w-full h-[2px] bg-primary rounded-t-full hidden md:block" />
-                  )}
+                  <span className={`absolute -bottom-1 left-0 h-[2px] bg-primary transition-all duration-300 ${isActive ? 'w-full' : 'w-0 group-hover:w-full'}`} />
                 </Link>
               );
             })}
           </nav>
         )}
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-6">
+          <div className="hidden sm:flex items-center gap-6">
+            <ThemeToggle />
+            <div className="h-4 w-[1px] bg-white/10" />
+          </div>
+          
           {session ? (
             <>
-              <ThemeToggle />
-              <div className="h-5 w-px bg-border hidden md:block" />
               <UserMenu />
-              <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileOpen(!mobileOpen)}>
-                {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              <Button variant="ghost" size="icon" className="md:hidden text-white hover:bg-white/10" onClick={() => setMobileOpen(!mobileOpen)}>
+                {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
               </Button>
             </>
           ) : (
-            <div className="flex items-center gap-3">
-              <ThemeToggle />
-              <div className="h-5 w-px bg-border" />
-              <Link href="/auth/signin">
-                <Button size="sm" className="gap-2 h-9 px-4">
-                  <LogIn className="h-4 w-4" /> Sign In
-                </Button>
-              </Link>
-            </div>
+            <Link href="/auth/signin">
+              <Button size="lg" className="h-12 px-8 bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-widest text-[0.7rem] skew-x-[-12deg] transition-all shadow-[0_0_20px_rgba(var(--primary-rgb),0.3)]">
+                <span className="skew-x-[12deg] flex items-center gap-2">Initialize <ChevronRight size={14} /></span>
+              </Button>
+            </Link>
           )}
         </div>
       </div>

@@ -33,12 +33,13 @@ interface AtsResult {
 interface ResumePreviewProps {
   resumeMarkdown: string;
   resumeData?: Record<string, unknown> | null;
-  onResumeChange: (markdown: string) => void;
-  onReset: () => void;
+  onResumeChange?: (markdown: string) => void;
+  onReset?: () => void;
   jobDescription?: string;
+  className?: string;
 }
 
-export default function ResumePreview({ resumeMarkdown, resumeData, onReset, jobDescription }: ResumePreviewProps) {
+export default function ResumePreview({ resumeMarkdown, resumeData, onReset, jobDescription, className }: ResumePreviewProps) {
   const store = useResumeStore();
   const activeData = (resumeData || store.data) as ResumeData;
   const [atsResult, setAtsResult] = useState<AtsResult | null>(null);
@@ -131,7 +132,7 @@ export default function ResumePreview({ resumeMarkdown, resumeData, onReset, job
   };
 
   return (
-    <div className="preview-container animate-fade-in">
+    <div className={`preview-container animate-fade-in ${className || ''}`}>
       {/* Toolbar */}
       <div className="preview-toolbar">
         <div className="preview-toolbar-left">

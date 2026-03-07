@@ -620,45 +620,61 @@ export default function ChatBot() {
 
       {/* Floating Action Button */}
       {!isOpen && (
-        <button className="chatbot-fab" onClick={openChat} title="AI Career Counselor">
-          <MessageCircle size={24} />
-          <span className="chatbot-fab-pulse" />
+        <button 
+          className="fixed bottom-8 right-8 z-[9990] flex h-16 w-16 items-center justify-center bg-primary text-white skew-x-[-12deg] shadow-[0_0_30px_rgba(var(--primary-rgb),0.5)] hover:shadow-[0_0_40px_rgba(var(--primary-rgb),0.7)] hover:scale-110 transition-all duration-300 group" 
+          onClick={openChat} 
+          title="AI Career Counselor"
+        >
+          <div className="skew-x-[12deg] group-hover:rotate-12 transition-transform">
+            <MessageCircle size={32} />
+          </div>
+          <span className="absolute -top-1 -right-1 flex h-4 w-4">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-4 w-4 bg-primary border-2 border-white"></span>
+          </span>
         </button>
       )}
 
       {/* Chat Panel */}
       {isOpen && !isMinimized && (
-        <div className="chatbot-panel glass-panel animate-slide-up">
+        <div className="chatbot-panel glass-panel">
           <div className="chatbot-header">
             <div className="chatbot-header-info">
-              <Bot size={20} />
+              <div className="flex h-10 w-10 items-center justify-center bg-primary text-white skew-x-[-8deg]">
+                <div className="skew-x-[8deg]"><Bot size={20} /></div>
+              </div>
               <div>
-                <h4>AI Career Counselor</h4>
-                <span>
-                  {uploading ? '📎 Parsing file...' : loading ? 'Thinking...' : parsedContext ? '📄 Resume loaded' : 'Online'}
-                </span>
+                <h4 className="font-black uppercase italic tracking-tighter">AI Counselor</h4>
+                <div className="flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-zinc-400">
+                    {uploading ? 'Parsing...' : loading ? 'Thinking...' : 'Operational'}
+                  </span>
+                </div>
               </div>
             </div>
             <div className="chatbot-header-actions">
-              <button onClick={handleReset} className="chatbot-header-btn" title="New Chat">
-                <RotateCcw size={15} />
+              <button onClick={handleReset} className="p-2 text-zinc-400 hover:text-white transition-colors" title="New Chat">
+                <RotateCcw size={16} />
               </button>
-              <button onClick={() => setIsMinimized(true)} className="chatbot-header-btn" title="Minimize">
+              <button onClick={() => setIsMinimized(true)} className="p-2 text-zinc-400 hover:text-white transition-colors" title="Minimize">
                 <Minimize2 size={16} />
               </button>
-              <button onClick={() => setIsOpen(false)} className="chatbot-header-btn" title="Close">
+              <button onClick={() => setIsOpen(false)} className="p-2 text-zinc-400 hover:text-white transition-colors" title="Close">
                 <X size={16} />
               </button>
             </div>
           </div>
 
-          <div className="chatbot-messages" ref={scrollRef}>
+          <div className="chatbot-messages bg-black/40 backdrop-blur-md" ref={scrollRef}>
             {messages.map(renderMessage)}
             {(loading || uploading) && (
               <div className="chat-message assistant">
-                <div className="chat-avatar"><Bot size={16} /></div>
-                <div className="chat-bubble chat-typing">
-                  <span /><span /><span />
+                <div className="chat-avatar bg-zinc-800 text-primary border border-primary/20"><Bot size={16} /></div>
+                <div className="chat-bubble bg-zinc-900/50 border border-white/5 flex gap-1">
+                  <span className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce"></span>
+                  <span className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce [animation-delay:0.2s]"></span>
+                  <span className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce [animation-delay:0.4s]"></span>
                 </div>
               </div>
             )}
@@ -666,17 +682,16 @@ export default function ChatBot() {
 
           {/* Quick reply suggestions */}
           {suggestions.length > 0 && !loading && !uploading && (
-            <div className="chatbot-suggestions">
-              <Lightbulb size={12} style={{ color: 'var(--text-muted)', flexShrink: 0, marginTop: '2px' }} />
-              <div className="chatbot-suggestion-chips">
+            <div className="p-4 bg-zinc-950/50 border-t border-white/5">
+              <div className="flex flex-wrap gap-2">
                 {suggestions.map((s, i) => (
                   <button
                     key={i}
-                    className="chatbot-suggestion-chip"
+                    className="px-3 py-1.5 bg-zinc-900 hover:bg-primary hover:text-white border border-white/10 text-[10px] font-black uppercase tracking-widest transition-all skew-x-[-12deg] disabled:opacity-50"
                     onClick={() => sendMessage(s)}
                     disabled={loading}
                   >
-                    {s}
+                    <span className="skew-x-[12deg] block">{s}</span>
                   </button>
                 ))}
               </div>
@@ -685,79 +700,69 @@ export default function ChatBot() {
 
           {/* Fill Builder action with readiness score */}
           {extractedData && validation && (
-            <div className="chatbot-actions">
-              <div className="chatbot-readiness">
-                <div className="chatbot-readiness-header">
-                  <span>Resume Readiness</span>
-                  <span className={`chatbot-readiness-score ${validation.passed ? 'ready' : 'not-ready'}`}>
+            <div className="p-4 bg-zinc-950/80 border-t border-primary/20 space-y-4">
+              <div className="space-y-2">
+                <div className="flex justify-between items-end">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500 text-zinc-500">Readiness Report</span>
+                  <span className={`text-xl font-black italic ${validation.passed ? 'text-green-500' : 'text-primary'}`}>
                     {validation.score}%
                   </span>
                 </div>
-                <div className="chatbot-readiness-bar">
+                <div className="h-1 w-full bg-zinc-800">
                   <div
-                    className={`chatbot-readiness-fill ${validation.passed ? 'ready' : 'not-ready'}`}
+                    className={`h-full transition-all duration-1000 ${validation.passed ? 'bg-green-500 shadow-[0_0_10px_#10b981]' : 'bg-primary shadow-[0_0_10px_rgba(var(--primary-rgb),0.5)]'}`}
                     style={{ width: `${validation.score}%` }}
                   />
                 </div>
-                {validation.missing.length > 0 && (
-                  <div className="chatbot-readiness-missing">
-                    Missing: {validation.missing.join(', ')}
-                  </div>
-                )}
               </div>
               <button
                 onClick={handleGenerate}
                 disabled={generating}
-                className={`btn-primary chatbot-generate-btn ${!validation.passed ? 'btn-warning' : ''}`}
+                className={`w-full h-12 flex items-center justify-center gap-2 font-black uppercase tracking-widest text-xs skew-x-[-12deg] transition-all ${validation.passed ? 'bg-green-600 text-white shadow-[0_0_20px_#10b98144]' : 'bg-primary text-white shadow-[0_0_20px_rgba(var(--primary-rgb),0.3)]'}`}
               >
-                {generating
-                  ? <><Loader2 size={16} className="spin-icon" /> Filling Builder...</>
-                  : validation.passed
-                    ? <><Sparkles size={16} /> Fill Builder & Review</>
-                    : <><Sparkles size={16} /> Fill Builder ({validation.score}% ready)</>
-                }
+                <span className="skew-x-[12deg] flex items-center gap-2">
+                  {generating
+                    ? <><Loader2 size={16} className="animate-spin" /> Synchronizing...</>
+                    : <><Sparkles size={16} /> Deploy to Builder</>
+                  }
+                </span>
               </button>
             </div>
           )}
 
-          <div className="chatbot-input-area">
+          <div className="p-4 bg-zinc-950 border-t border-white/10 flex items-center gap-2">
             <button
-              className="chatbot-attach-btn"
+              className="p-3 text-zinc-500 hover:text-white transition-colors"
               onClick={() => fileInputRef.current?.click()}
               disabled={loading || uploading}
-              title="Attach resume (PDF, DOCX, TXT)"
             >
-              {uploading ? <Loader2 size={18} className="spin-icon" /> : <Paperclip size={18} />}
+              <Paperclip size={20} />
             </button>
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={isListening ? '🎤 Listening...' : parsedContext ? "Tell me your target role..." : "Type your answer or ask a question..."}
-              className={`chatbot-input ${isListening ? 'voice-active' : ''}`}
-              disabled={loading || uploading}
-              rows={1}
-            />
-            <button
-              className={`chatbot-voice-btn ${isListening ? 'recording' : ''}`}
-              onClick={isListening ? stopListening : startListening}
-              disabled={loading || uploading}
-              title={isListening ? 'Stop recording' : 'Voice input'}
-              type="button"
+            <div className="flex-1 bg-zinc-900 border border-white/5 p-1 flex items-center gap-2">
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Type command..."
+                className="flex-1 bg-transparent border-none focus:ring-0 text-sm text-white placeholder:text-zinc-600 resize-none py-2 px-3"
+                rows={1}
+                disabled={loading || uploading}
+              />
+              <button
+                className={`p-2 transition-colors ${isListening ? 'text-red-500 animate-pulse' : 'text-zinc-500 hover:text-white'}`}
+                onClick={isListening ? stopListening : startListening}
+                disabled={loading || uploading}
+              >
+                <Mic size={18} />
+              </button>
+            </div>
+            <button 
+              onClick={() => sendMessage()} 
+              disabled={loading || uploading || !input.trim()} 
+              className="h-10 w-10 flex items-center justify-center bg-primary text-white disabled:opacity-20 transition-all hover:scale-110"
             >
-              {isListening ? <MicOff size={18} /> : <Mic size={18} />}
-            </button>
-            <button
-              className={`chatbot-voice-btn ${autoSpeak ? 'active' : ''}`}
-              onClick={() => { if (isSpeaking) stopSpeaking(); setAutoSpeak(!autoSpeak); }}
-              title={autoSpeak ? 'Auto-read: ON' : 'Auto-read: OFF'}
-              type="button"
-            >
-              {autoSpeak ? <Volume2 size={18} /> : <VolumeX size={18} />}
-            </button>
-            <button onClick={() => sendMessage()} disabled={loading || uploading || !input.trim()} className="chatbot-send-btn">
-              {loading ? <Loader2 size={18} className="spin-icon" /> : <Send size={18} />}
+              <Send size={18} />
             </button>
           </div>
         </div>
@@ -765,9 +770,16 @@ export default function ChatBot() {
 
       {/* Minimized state */}
       {isOpen && isMinimized && (
-        <button className="chatbot-fab chatbot-minimized" onClick={() => { setIsMinimized(false); focusInput(); }}>
-          <Bot size={20} />
-          {messages.length > 1 && <span className="chatbot-badge">{messages.length}</span>}
+        <button 
+          className="fixed bottom-8 right-8 z-[9990] flex h-14 w-14 items-center justify-center bg-zinc-900 border-2 border-primary text-primary shadow-2xl hover:scale-110 transition-all" 
+          onClick={() => { setIsMinimized(false); focusInput(); }}
+        >
+          <Bot size={24} />
+          {messages.length > 1 && (
+            <span className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-primary text-white text-[10px] font-black flex items-center justify-center">
+              {messages.length}
+            </span>
+          )}
         </button>
       )}
     </>
