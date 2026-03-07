@@ -37,6 +37,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
         GoogleProvider({
             clientId: process.env.GOOGLE_CLIENT_ID,
             clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+            allowDangerousEmailAccountLinking: true,
         })
     );
 }
@@ -47,6 +48,7 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
         GitHubProvider({
             clientId: process.env.GITHUB_CLIENT_ID,
             clientSecret: process.env.GITHUB_CLIENT_SECRET,
+            allowDangerousEmailAccountLinking: true,
         })
     );
 }
@@ -57,6 +59,17 @@ if (process.env.LINKEDIN_CLIENT_ID && process.env.LINKEDIN_CLIENT_SECRET) {
         LinkedInProvider({
             clientId: process.env.LINKEDIN_CLIENT_ID,
             clientSecret: process.env.LINKEDIN_CLIENT_SECRET,
+            allowDangerousEmailAccountLinking: true,
+            issuer: 'https://www.linkedin.com/oauth',
+            jwks_endpoint: 'https://www.linkedin.com/oauth/openid/jwks',
+            profile(profile) {
+                return {
+                    id: profile.sub,
+                    name: profile.name,
+                    email: profile.email,
+                    image: profile.picture,
+                };
+            },
         })
     );
 }
@@ -67,18 +80,35 @@ export const authOptions: NextAuthOptions = {
     pages: { signIn: '/auth/signin' },
     providers,
     callbacks: {
-        async jwt({ token, user }) {
+        async jwt({ token, user, trigger, session }) {
             if (user) {
                 token.id = user.id;
                 token.credits = (user as { credits?: number }).credits;
+            }
+            if (trigger === 'update' && session) {
+                // NextAuth update() hook passes the session from the client if provided, however the better and safer way is to let the session callback fetch from DB because we just mutated the DB directly in the API. We can just return token here and let session() fetch latest DB values.
             }
             return token;
         },
         async session({ session, token }) {
             if (session.user) {
                 (session.user as { id?: string; credits?: number }).id = token.id as string;
-                const dbUser = await prisma.user.findUnique({ where: { id: token.id as string } });
-                (session.user as { id?: string; credits?: number }).credits = dbUser?.credits ?? 0;
+
+                // Fetch latest user details from DB along with their linked OAuth accounts
+                const dbUser = await prisma.user.findUnique({
+                    where: { id: token.id as string },
+                    include: { accounts: true }
+                });
+
+                if (dbUser) {
+                    (session.user as any).credits = dbUser.credits ?? 0;
+                    (session.user as any).name = dbUser.name;
+                    (session.user as any).image = dbUser.image;
+                    (session.user as any).phone = dbUser.phone;
+                    (session.user as any).address = dbUser.address;
+                    // Pass down an array of connected provider IDs (e.g. ['google', 'github', 'linkedin'])
+                    (session.user as any).connectedProviders = dbUser.accounts.map(acc => acc.provider);
+                }
             }
             return session;
         },
