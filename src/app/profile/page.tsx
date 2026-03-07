@@ -175,8 +175,91 @@ export default function ProfilePage() {
     }
   };
 
-  const handleConnect = (provider: string) => {
-    signIn(provider, { callbackUrl: '/profile' });
+  const handleConnect = async (provider: string) => {
+    try {
+      // Fetch NextAuth CSRF token required for POST requests
+      const csrfRes = await fetch('/api/auth/csrf');
+      const { csrfToken } = await csrfRes.json();
+
+      // Launch the empty popup window first so it's not blocked by async await
+      const width = 500;
+      const height = 600;
+      const left = window.screenX + (window.outerWidth - width) / 2;
+      const top = window.screenY + (window.outerHeight - height) / 2;
+      
+      const popupName = `OAuthPopup_${provider}`;
+      const popup = window.open('', popupName, `width=${width},height=${height},left=${left},top=${top}`);
+
+      // Create a hidden form to natively POST to NextAuth's signin endpoint
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = `/api/auth/signin/${provider}`;
+      form.target = popupName;
+      form.style.display = 'none';
+
+      // Add CSRF token
+      const csrfInput = document.createElement('input');
+      csrfInput.type = 'hidden';
+      csrfInput.name = 'csrfToken';
+      csrfInput.value = csrfToken;
+      form.appendChild(csrfInput);
+
+      // Add callbackUrl (this is where the popup will ultimately land)
+      const callbackInput = document.createElement('input');
+      callbackInput.type = 'hidden';
+      callbackInput.name = 'callbackUrl';
+      callbackInput.value = window.location.origin + '/profile';
+      form.appendChild(callbackInput);
+
+      document.body.appendChild(form);
+      form.submit();
+      document.body.removeChild(form);
+
+      // Poll the popup to know when the user finishes authenticating
+      if (popup) {
+        const timer = setInterval(() => {
+          if (popup.closed) {
+            clearInterval(timer);
+            update(); // Force UI to refresh bindings 
+          } else {
+            try {
+              // If popup navigates back to our domain, authentication finished (or errored)
+              if (popup.location.hostname === window.location.hostname) {
+                const path = popup.location.pathname;
+                if (path === '/profile' || path.includes('/auth/signin')) {
+                  popup.close();
+                  clearInterval(timer);
+                  update();
+                }
+              }
+            } catch (e) {
+              // Cross-origin block expected during external provider auth
+            }
+          }
+        }, 500);
+      }
+    } catch (err) {
+      console.error('Failed to trigger connection popup', err);
+    }
+  };
+
+  const handleDisconnect = async (provider: string) => {
+    if (!confirm(`Are you sure you want to disconnect your ${provider} account?`)) return;
+    try {
+      const res = await fetch('/api/profile/disconnect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider }),
+      });
+      if (res.ok) {
+        update(); // Force NextAuth session refresh to wipe the array
+      } else {
+        const data = await res.json();
+        alert(data.error || `Disconnect failed for ${provider}`);
+      }
+    } catch {
+      alert(`Something went wrong disconnecting ${provider}`);
+    }
   };
 
   const handleDeleteAccount = async () => {
@@ -358,8 +441,12 @@ export default function ProfilePage() {
                         <div className="text-xs text-muted-foreground">{(session?.user as any)?.connectedProviders?.includes('google') ? session?.user?.email : 'Not connected'}</div>
                       </div>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => handleConnect('google')} disabled={(session?.user as any)?.connectedProviders?.includes('google')}>
-                      {(session?.user as any)?.connectedProviders?.includes('google') ? 'Connected' : 'Connect'}
+                    <Button 
+                      variant={(session?.user as any)?.connectedProviders?.includes('google') ? 'destructive' : 'outline'} 
+                      size="sm" 
+                      onClick={() => (session?.user as any)?.connectedProviders?.includes('google') ? handleDisconnect('google') : handleConnect('google')}
+                    >
+                      {(session?.user as any)?.connectedProviders?.includes('google') ? 'Disconnect' : 'Connect'}
                     </Button>
                   </div>
 
@@ -372,8 +459,12 @@ export default function ProfilePage() {
                         <div className="text-xs text-muted-foreground">{(session?.user as any)?.connectedProviders?.includes('github') ? 'Connected' : 'Not connected'}</div>
                       </div>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => handleConnect('github')} disabled={(session?.user as any)?.connectedProviders?.includes('github')}>
-                      {(session?.user as any)?.connectedProviders?.includes('github') ? 'Connected' : 'Connect'}
+                    <Button 
+                      variant={(session?.user as any)?.connectedProviders?.includes('github') ? 'destructive' : 'outline'} 
+                      size="sm" 
+                      onClick={() => (session?.user as any)?.connectedProviders?.includes('github') ? handleDisconnect('github') : handleConnect('github')}
+                    >
+                      {(session?.user as any)?.connectedProviders?.includes('github') ? 'Disconnect' : 'Connect'}
                     </Button>
                   </div>
                   
@@ -386,8 +477,12 @@ export default function ProfilePage() {
                         <div className="text-xs text-muted-foreground">{(session?.user as any)?.connectedProviders?.includes('linkedin') ? 'Connected' : 'Not connected'}</div>
                       </div>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => handleConnect('linkedin')} disabled={(session?.user as any)?.connectedProviders?.includes('linkedin')}>
-                      {(session?.user as any)?.connectedProviders?.includes('linkedin') ? 'Connected' : 'Connect'}
+                    <Button 
+                      variant={(session?.user as any)?.connectedProviders?.includes('linkedin') ? 'destructive' : 'outline'} 
+                      size="sm" 
+                      onClick={() => (session?.user as any)?.connectedProviders?.includes('linkedin') ? handleDisconnect('linkedin') : handleConnect('linkedin')}
+                    >
+                      {(session?.user as any)?.connectedProviders?.includes('linkedin') ? 'Disconnect' : 'Connect'}
                     </Button>
                   </div>
                 </CardContent>
