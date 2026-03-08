@@ -196,7 +196,7 @@ const DOMAIN_KEYWORDS: Record<string, Set<string>> = {
         'docker', 'kubernetes', 'k8s', 'terraform', 'ansible', 'jenkins',
         'ci/cd', 'cicd', 'devops', 'devsecops', 'sre', 'mlops',
         'git', 'github', 'gitlab', 'bitbucket', 'svn',
-        'machine learning', 'deep learning', 'nlp', 'computer vision',
+        'machine learning', 'deep learning', 'nlp', 'computer vision', 'generative ai', 'llms',
         'tensorflow', 'pytorch', 'pandas', 'numpy', 'scikit-learn', 'opencv',
         'data science', 'data engineering', 'data pipeline', 'etl', 'elt',
         'data warehouse', 'data lake', 'big data', 'hadoop', 'spark',
@@ -208,6 +208,8 @@ const DOMAIN_KEYWORDS: Record<string, Set<string>> = {
         'blockchain', 'web3', 'solidity', 'smart contracts',
         'cybersecurity', 'penetration testing', 'encryption', 'oauth',
         'sso', 'jwt', 'ldap', 'rbac', 'iam',
+        'next.js', 'nextjs', 'tailwind', 'tailwindcss', 'prisma', 'supabase',
+        'vercel', 'zustand', 'trpc', 'vite', 'webpack', 'babel', 'drizzle'
     ]),
 
     // Marketing & Digital
@@ -399,7 +401,7 @@ const CERTIFICATION_PATTERNS = /\b(aws\s*(certified|solutions|developer|sysops|d
 
 // ─── Tool & Platform Patterns (multi-industry) ───────
 
-const TOOL_PATTERNS = /\b(jira|git|github|gitlab|docker|kubernetes|jenkins|slack|figma|sketch|notion|confluence|terraform|ansible|trello|asana|monday|clickup|basecamp|airtable|zapier|hubspot|salesforce|marketo|pardot|mailchimp|intercom|zendesk|freshdesk|servicenow|datadog|splunk|grafana|newrelic|pagerduty|tableau|power\s*bi|looker|metabase|excel|powerpoint|word|outlook|teams|zoom|google\s*(workspace|docs|sheets|slides|drive|meet|analytics|ads|search\s*console|tag\s*manager)|adobe\s*(creative\s*suite|photoshop|illustrator|indesign|premiere|after\s*effects|lightroom|xd|acrobat)|canva|wordpress|shopify|webflow|squarespace|wix|sap|oracle|netsuite|workday|bamboohr|adp|quickbooks|xero|stripe|paypal|twilio|sendgrid|aws|azure|gcp|heroku|vercel|netlify|firebase|supabase|postman|swagger|vs\s*code|intellij|pycharm|xcode|android\s*studio)\b/i;
+const TOOL_PATTERNS = /\b(jira|git|github|gitlab|docker|kubernetes|jenkins|slack|figma|sketch|notion|confluence|terraform|ansible|trello|asana|monday|clickup|basecamp|airtable|zapier|hubspot|salesforce|marketo|pardot|mailchimp|intercom|zendesk|freshdesk|servicenow|datadog|splunk|grafana|newrelic|pagerduty|tableau|power\s*bi|looker|metabase|excel|powerpoint|word|outlook|teams|zoom|google\s*(workspace|docs|sheets|slides|drive|meet|analytics|ads|search\s*console|tag\s*manager)|adobe\s*(creative\s*suite|photoshop|illustrator|indesign|premiere|after\s*effects|lightroom|xd|acrobat)|canva|wordpress|shopify|webflow|squarespace|wix|sap|oracle|netsuite|workday|bamboohr|adp|quickbooks|xero|stripe|paypal|twilio|sendgrid|aws|azure|gcp|heroku|vercel|netlify|firebase|supabase|postman|swagger|vs\s*code|intellij|pycharm|xcode|android\s*studio|vitest|jest|cypress|playwright|selenium|webpack|vite|rollup|turborepo)\b/i;
 
 // ─── Methodology Patterns ────────────────────────────
 
@@ -460,8 +462,11 @@ function extractKeywords(jdText: string): KeywordMatch[] {
     const wordFreq = new Map<string, number>();
 
     // Tokenize
+    // Strip trailing punctuation from words (e.g., "applications." -> "applications")
     const cleanText = text.replace(/[^a-z0-9+#/.&\s-]/g, ' ');
-    const words = cleanText.split(/\s+/).filter(w => w.length > 1);
+    const words = cleanText.split(/\s+/)
+        .map(w => w.replace(/^[^a-z0-9]+|[^a-z0-9+#]+$/g, '')) // remove leading/trailing punctuation except # and + (like c++, c#)
+        .filter(w => w.length > 1);
 
     // 3-grams (for multi-word terms like "machine learning engineer")
     for (let i = 0; i < words.length - 2; i++) {
@@ -504,7 +509,14 @@ function extractKeywords(jdText: string): KeywordMatch[] {
         'using', 'used', 'level', 'high', 'best', 'open', 'full', 'part',
         'great', 'good', 'relevant', 'demonstrate', 'demonstrated',
         'job', 'type', 'description', 'title', 'date', 'posted', 'deadline',
-        'we\'re', 'we\'ll', 'you\'ll', 'you\'re', 'we\'ve',
+        "we're", "we'll", "you'll", "you're", "we've", 'etc', 'e.g', 'i.e',
+        'build', 'building', 'create', 'creating', 'develop', 'developing',
+        'maintain', 'maintaining', 'support', 'supporting', 'deliver', 'delivering',
+        'design', 'designing', 'implement', 'implementing', 'environment', 'tools',
+        'stack', 'status', 'various', 'multiple', 'complex', 'ensure', 'ensuring',
+        'provide', 'providing', 'participate', 'participating', 'contribute', 'contributing',
+        'excellent', 'understanding', 'knowledge', 'familiarity', 'to', 'in', 'of', 'is', 'on', 'at',
+        'seeking', 'highly', 'setting', 'an', 'active', 'detailed', 'compassionate', 'collaborate'
     ]);
 
     // Build keyword list
@@ -515,7 +527,25 @@ function extractKeywords(jdText: string): KeywordMatch[] {
     const sorted = [...wordFreq.entries()]
         .filter(([word]) => {
             const tokens = word.split(' ');
-            return !tokens.every(t => stopWords.has(t));
+            if (tokens.length === 1) return !stopWords.has(tokens[0]);
+
+            // For n-grams: 
+            // - Ensure starting and ending words are NOT stop words.
+            // - Reject if ANY word is purely punctuation/numbers.
+            // This prevents "with python" or "designing the" from slipping through.
+            const first = tokens[0];
+            const last = tokens[tokens.length - 1];
+            if (stopWords.has(first) || stopWords.has(last)) return false;
+
+            // Reject if every token is a stop word (failsafe)
+            if (tokens.every(t => stopWords.has(t))) return false;
+
+            // Further strict filtering for n-grams to prevent phrases like "applications requirements 5+" 
+            // or "technologies in" from passing
+            const hasInnerStopWord = tokens.some(t => stopWords.has(t));
+            if (hasInnerStopWord && tokens.length > 2) return false;
+
+            return true;
         })
         .sort((a, b) => b[1] - a[1]);
 
@@ -543,6 +573,9 @@ function extractKeywords(jdText: string): KeywordMatch[] {
         if (word.split(' ').length === 1 && word.length < 3 && category === 'general') continue;
 
         // Keep if: it's a domain term, appears 2+ times, or is a multi-word phrase
+        // BUT strict restriction: skip 'general' multi-word phrases that just made it through stopword filters
+        if (category === 'general' && word.includes(' ') && !word.match(/^[a-z0-9+#]+ [a-z0-9+#]+$/)) continue;
+
         if (category !== 'general' || freq >= 2 || (word.includes(' ') && freq >= 1)) {
             seen.add(word);
             if (word.includes(' ')) addedSubstrings.add(word);
@@ -587,10 +620,17 @@ function matchKeywords(keywords: KeywordMatch[], resumeText: string): KeywordMat
 
     return keywords.map(kw => {
         const escaped = kw.keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        // Use word boundary for single words, looser match for multi-word
+
+        // Custom word boundary that allows for #, +, ., etc. in tech terms
+        // e.g., Next.js, C++, C#
+        const boundaryBefore = `(^|[^a-z0-9_+#.])`;
+        const boundaryAfter = `([^a-z0-9_+#.]|$)`;
+
+        // Allow basic plurals (s, es) for single word terms
         const pattern = kw.keyword.includes(' ')
             ? escaped
-            : `\\b${escaped}\\b`;
+            : `${boundaryBefore}${escaped}(s|es)?${boundaryAfter}`;
+
         const regex = new RegExp(pattern, 'gi');
         const matches = resume.match(regex);
 

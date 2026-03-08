@@ -37,11 +37,11 @@ export async function POST(req: Request) {
             ? `\nCRITICAL CONTEXT: The user is applying for a job with this description:\n"${jobDescription}"\n\nYou MUST seamlessly integrate prevalent keywords and phrases from this Job Description into the rewritten bullets where logically possible.`
             : '';
 
-        const prompt = `You are an expert resume writer. Rewrite the following achievement bullets for a ${entry.jobTitle || 'professional'} at ${entry.company || 'a company'}, targeting a ${targetRole || 'new'} role.
+        const prompt = `You are an expert career advisor and resume writer for ALL industries. Rewrite the following achievement bullets for a ${entry.jobTitle || 'professional'} at ${entry.company || 'a company'}, targeting a ${targetRole || 'new'} role.
 ${jdContext}
 
 Follow the Google XYZ formula: "Accomplished [X], as measured by [Y], by doing [Z]".
-Make them highly impactful, active, and results-oriented.
+Make them highly impactful, active, and results-oriented. Adapt your vocabulary perfectly to the user's specific industry (e.g., healthcare, retail, finance, trades, tech).
 
 Original Bullets:
 ${entry.bullets.join('\n')}

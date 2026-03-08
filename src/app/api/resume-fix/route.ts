@@ -33,12 +33,13 @@ export async function POST(req: Request) {
 
 ⛔ ABSOLUTE RULES:
 - NEVER invent metrics, numbers, or percentages
-- NEVER add technologies or tools not mentioned in the bullet
-- NEVER change the meaning of what the person did
-- ONLY improve sentence structure and start with a strong action verb
+- NEVER add tools, technologies, or skills not mentioned in the bullet
+- NEVER change the core meaning of what the person did
+- ONLY improve sentence structure and start with a strong, industry-appropriate action verb
 - If a bullet already starts with an action verb and reads well, keep it as-is
+- Adapt your vocabulary to the specific field (e.g., teaching, nursing, management, tech)
 
-Target Role: ${targetRole || 'General'}
+Target Role: ${targetRole || 'General Professional'}
 
 Fix these experience bullets. For each experience entry, return improved bullets.
 
@@ -84,8 +85,8 @@ REMEMBER: You are EDITING, not WRITING. Keep every fact the same. Only improve t
 
 ⛔ ABSOLUTE RULES:
 - ONLY use information provided below
-- NEVER invent skills, technologies, or achievements
-- Keep it concise and professional
+- NEVER invent skills, experiences, or achievements
+- Keep it concise and professional, adapting the tone exactly to their industry and experience level.
 
 Name: ${personal?.fullName || 'Candidate'}
 Target Role: ${targetRole || 'Professional'}

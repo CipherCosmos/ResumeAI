@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { ResumeData, ResumeTemplate, WorkEntry } from '@/types/resume';
 import { useResumeStore } from '@/store/useResumeStore';
-import { DebouncedInput } from '@/components/DebouncedInput';
+import { DebouncedInput, DebouncedTextarea } from '@/components/DebouncedInput';
 import { PersonalSection } from '@/components/form/PersonalSection';
 import { TargetAndSkillsSection } from '@/components/form/TargetAndJDSection';
 import { ExperienceSection } from '@/components/form/ExperienceSection';
@@ -85,12 +85,12 @@ function AutoTriggerReview({ handleReviewReadiness }: { handleReviewReadiness: (
 
 // --- AI Expert Advisor Logic ---
 const AI_ADVISOR_DATA: Record<number, string[]> = {
-  1: ["Add a professional headshot to creative templates to increase engagement.", "Include your GitHub if applying for tech roles; it's a huge trust builder.", "Pro-tip: Use a professional email like firstname.lastname@email.com."],
-  2: ["ATS systems filter by mandatory skills first. Ensure yours are present.", "Specific titles like 'Senior Frontend Engineer' score higher than 'Lead Developer'.", "If you have the JD, use 'AI Extract' to catch 100% of hidden keywords."],
-  3: ["Action verbs like 'Spearheaded' or 'Orchestrated' outperform 'Managed'.", "Numbers talk. 'Grew revenue by 20%' is better than 'Increased revenue'.", "Keep each bullet under 2 lines for maximum readability."],
-  4: ["Open source contributions show passion. Highlight your top 2 projects.", "Include relevant coursework if you're a recent grad or switching fields.", "List the tech stack for every project to double your keyword hits."],
-  5: ["An 80+ score usually guarantees a human will read your resume.", "Try the 'Modern' template for tech and 'Professional' for corporate.", "Don't forget to generate a tailored cover letter for this specific role."],
-  0: ["Upload your old resume to save 10+ minutes of manual entry.", "Starting from scratch? Use 'Magic Baseline' to get an AI-powered headstart.", "The better your starting data, the better AI can optimize your results."]
+  1: ["Add a professional headshot to creative templates to increase engagement.", "Include a link to your portfolio, GitHub, or professional website if applicable.", "Pro-tip: Use a professional email like firstname.lastname@email.com."],
+  2: ["ATS systems filter by mandatory skills first. Ensure yours are present.", "Use industry-standard job titles as they score higher than unconventional ones.", "If you have the JD, use 'AI Extract' to catch 100% of hidden keywords for your specific field."],
+  3: ["Action verbs like 'Spearheaded' or 'Orchestrated' outperform 'Managed'.", "Numbers talk. 'Grew revenue by 20%' or 'Managed 50+ patients' is better than vague statements.", "Keep each bullet under 2 lines for maximum readability."],
+  4: ["Highlight key projects, campaigns, or initiatives that show your direct impact.", "Include relevant coursework or certifications if you're a recent grad or switching fields.", "List the tools and methodologies for every project to double your keyword hits."],
+  5: ["An 80+ score usually guarantees a human will read your resume.", "Try the 'Modern' template for tech/creative and 'Professional' for corporate/academic.", "Don't forget to generate a tailored cover letter for this specific role."],
+  0: ["Upload your old resume to save 10+ minutes of manual entry.", "Starting from scratch? Use 'Magic Baseline' to get an AI-powered headstart tailored to your role.", "The better your starting data, the better AI can optimize your results for your specific industry."]
 };
 
 // --- Live ATS Score Logic (Simplified but deterministic) ---
@@ -218,9 +218,16 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
   };
 
   // --- Auto-Save ---
+  const lastSavedDataRef = useRef<string>('');
+  
   React.useEffect(() => {
     if (!store.currentResumeId) return; // Don't auto-save before initial generation
     const timer = setTimeout(() => {
+      const currentDataStr = JSON.stringify(data);
+      if (currentDataStr === lastSavedDataRef.current) return; // Data hasn't uniquely changed
+
+      lastSavedDataRef.current = currentDataStr;
+      
       // Background save without blocking UI state
       fetch('/api/resumes', {
         method: 'PUT',
@@ -1316,7 +1323,7 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
                   {summaryLoading ? <><Loader2 size={16} className="spin-icon" /> Generating...</> : <><Sparkles size={16} /> AI Auto-fill</>}
                 </button>
               </div>
-              <textarea value={data.summary} onChange={e => store.updateField('summary', e.target.value)} className="flex w-full rounded-md border border-input bg-background px-4 py-3 text-base ring-offset-background file:border-0 file:bg-transparent file:text-base file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" rows={4} placeholder="A results-driven software engineer with 5+ years..." />
+              <DebouncedTextarea value={data.summary} onChangeValue={(val: string) => store.updateField('summary', val)} className="flex w-full rounded-md border border-input bg-background px-4 py-3 text-base ring-offset-background file:border-0 file:bg-transparent file:text-base file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" rows={4} placeholder="A results-driven software engineer with 5+ years..." delay={500} />
               <p className="text-[0.95rem] text-muted-foreground italic">Click &quot;AI Auto-fill&quot; to generate from your data, or write your own.</p>
             </div>
 
