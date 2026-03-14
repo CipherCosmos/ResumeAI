@@ -56,9 +56,19 @@ function createPrismaClient() {
     const pool = new pg.Pool({
         connectionString: finalConnectionString,
         ssl: sslOptions,
-        connectionTimeoutMillis: 5000, // Wait 5 seconds to connect before timing out
-        idleTimeoutMillis: 30000,       // Close idle clients after 30 seconds
+        max: 15, // max concurrent connections per client
+        connectionTimeoutMillis: 10000, 
+        idleTimeoutMillis: 30000, // Reapply idleTimeout to recycle stale connections
+        keepAlive: true, // Crucial for cloud databases (Supabase, Aiven, AWS)
+        // Set initial delay to 10 seconds for keepAlive pings
+        // Need to pass it via options since node-postgres v8 supports it
     });
+
+    // Important: Prevent connection drops from crashing the Node.js process
+    pool.on('error', (err) => {
+        console.error('Unexpected error on idle client in Prisma pg.Pool:', err);
+    });
+
     const adapter = new PrismaPg(pool);
     return new PrismaClient({ adapter } as unknown as any);
 }

@@ -222,7 +222,7 @@ ${jobDescription.substring(0, 3000)}`;
                 temperature: 0.1,
                 max_tokens: 1000,
             });
-            let kwContent = kwResult.content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
+            const kwContent = kwResult.content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
             aiKeywords = JSON.parse(kwContent);
             if (!Array.isArray(aiKeywords)) aiKeywords = [];
         } catch (err) {

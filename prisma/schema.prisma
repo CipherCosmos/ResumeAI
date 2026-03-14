@@ -1,30 +1,32 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
+  provider   = "postgresql"
+  extensions = [vector]
 }
 
 model User {
-  id            String    @id @default(cuid())
+  id            String           @id @default(cuid())
+  email         String?          @unique
+  password      String?
   name          String?
-  email         String?   @unique
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  address       String?
+  credits       Int              @default(10)
   emailVerified DateTime?
   image         String?
-  password      String?
   phone         String?
-  address       String?
-  credits       Int       @default(10)
-  
   accounts      Account[]
+  atsScores     AtsScore[]
+  applications  JobApplication[]
+  jobMatches    JobMatch[]
+  resumes       Resume[]
   sessions      Session[]
   transactions  Transaction[]
-  resumes       Resume[]
-  atsScores     AtsScore[]
-
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
 }
 
 model Account {
@@ -33,15 +35,14 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
   @@index([userId])
@@ -72,7 +73,6 @@ model Transaction {
   type        String
   description String
   createdAt   DateTime @default(now())
-
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
@@ -80,17 +80,18 @@ model Transaction {
 }
 
 model Resume {
-  id        String   @id @default(cuid())
-  userId    String
-  title     String   @default("My Resume")
-  data      Json
-  markdown  String?  @db.Text
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  atsScores AtsScore[]
+  id             String           @id @default(cuid())
+  userId         String
+  title          String           @default("My Resume")
+  data           Json
+  markdown       String?
+  vector         Unsupported("vector(768)")?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  atsScores      AtsScore[]
+  JobApplication JobApplication[]
+  jobMatches     JobMatch[]
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([userId, createdAt(sort: Desc)])
@@ -101,13 +102,12 @@ model AtsScore {
   resumeId    String
   userId      String
   score       Int
-  jdSnippet   String?  @db.Text
+  jdSnippet   String?
   matched     Json?
   missing     Json?
   suggestions Json?
   fullResult  Json?
   createdAt   DateTime @default(now())
-
   resume      Resume   @relation(fields: [resumeId], references: [id], onDelete: Cascade)
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -116,3 +116,146 @@ model AtsScore {
   @@index([userId, createdAt(sort: Desc)])
 }
 
+model JobPosting {
+  id              String           @id @default(cuid())
+  externalId      String?          @unique
+  source          String
+  sourceUrl       String?
+  title           String
+  company         String
+  location        String?
+  locationType    String?
+  description     String
+  descriptionRaw  String?
+  salary          String?
+  salaryMin       Int?
+  salaryMax       Int?
+  currency        String?          @default("USD")
+  skills          Json?
+  experienceLevel String?
+  employmentType  String?
+  industry        String?
+  postedAt        DateTime?
+  expiresAt       DateTime?
+  isActive        Boolean          @default(true)
+  firstSeen       DateTime         @default(now())
+  lastSeen        DateTime         @default(now())
+  contentHash     String?
+  vector          Unsupported("vector(768)")?
+  canonicalJobId  String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  applications    JobApplication[]
+  matches         JobMatch[]
+  versions        JobVersion[]     @relation("JobVersions")
+  canonicalJob    JobPosting?      @relation("CanonicalJob", fields: [canonicalJobId], references: [id])
+  duplicates      JobPosting[]     @relation("CanonicalJob")
+
+  @@index([title])
+  @@index([company])
+  @@index([isActive, postedAt(sort: Desc)])
+  @@index([source])
+  @@index([contentHash])
+  @@index([location])
+  @@index([firstSeen])
+  @@index([canonicalJobId])
+}
+
+model JobVersion {
+  id          String     @id @default(cuid())
+  jobId       String
+  contentHash String
+  diff        Json?
+  createdAt   DateTime   @default(now())
+  job         JobPosting @relation("JobVersions", fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([contentHash])
+}
+
+model JobMatch {
+  id              String     @id @default(cuid())
+  userId          String
+  resumeId        String?
+  jobId           String
+  overallScore    Float
+  atsScore        Float?
+  semanticScore   Float?
+  skillsOverlap   Float?
+  experienceMatch Float?
+  freshnessScore  Float?
+  matchedSkills   Json?
+  missingSkills   Json?
+  reasoning       String?
+  createdAt       DateTime   @default(now())
+  job             JobPosting @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  resume          Resume?    @relation(fields: [resumeId], references: [id])
+  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, jobId, resumeId])
+  @@index([jobId])
+  @@index([userId, overallScore(sort: Desc)])
+}
+
+model JobApplication {
+  id          String     @id @default(cuid())
+  userId      String
+  jobId       String
+  resumeId    String?
+  status      String     @default("saved")
+  appliedAt   DateTime?
+  responseAt  DateTime?
+  notes       String?
+  coverLetter String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  job         JobPosting @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  Resume      Resume?    @relation(fields: [resumeId], references: [id])
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, jobId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, status])
+}
+
+model SkillDemand {
+  id               String   @id @default(cuid())
+  skill            String   @unique
+  demandCount      Int      @default(0)
+  avgSalary        Int?
+  growthRate       Float?
+  category         String?
+  updatedAt        DateTime
+  demandPercentile Float?
+  demandTrend      String?
+
+  @@index([demandCount(sort: Desc)])
+  @@index([category])
+}
+model CareerSite {
+  id          String   @id @default(cuid())
+  domain      String   @unique
+  url         String
+  label       String?
+  source      String?  // e.g. "discovery", "manual"
+  trustScore  Float    @default(0.5)
+  lastScraped DateTime?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([domain])
+  @@index([trustScore(sort: Desc)])
+}
+
+model DiscoverySource {
+  id          String   @id @default(cuid())
+  query       String   @unique
+  frequency   String   @default("daily") // daily, weekly
+  lastRun     DateTime?
+  resultsFound Int     @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([lastRun])
+}
