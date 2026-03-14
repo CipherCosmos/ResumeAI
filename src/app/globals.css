@@ -2084,24 +2084,47 @@ textarea.input-field {
    ============================================================ */
 @media print {
   @page {
-    size: Letter;
-    margin: 0.5in;
+    size: auto;
+    margin: 15mm;
   }
 
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+    transition: none !important;
   }
 
   html,
   body {
     background: white !important;
+    color: black !important;
     margin: 0 !important;
     padding: 0 !important;
     width: 100% !important;
     height: auto !important;
+    min-height: 100% !important;
     overflow: visible !important;
     font-size: 11pt !important;
+  }
+
+  /* Force all parents to be visible and have auto height */
+  #__next,
+  main,
+  .app-main,
+  .container,
+  .preview-container,
+  .preview-content-area {
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    position: static !important;
+    display: block !important;
   }
 
   .glass-panel,
@@ -2110,8 +2133,8 @@ textarea.input-field {
   .preview-empty,
   .ats-details,
   .ats-badge,
-  header,
-  footer,
+  header:not(.resume-paper header),
+  footer:not(.resume-paper footer),
   nav,
   .chatbot-container,
   .chatbot-toggle,
@@ -2122,42 +2145,36 @@ textarea.input-field {
   .toolbar-btn,
   .builder-nav,
   .chatbot-fab,
-  .chatbot-panel {
+  .chatbot-panel,
+  .no-print {
     display: none !important;
-  }
-
-  .preview-container {
-    border: none !important;
-    box-shadow: none !important;
-    background: white !important;
-    border-radius: 0 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    width: 100% !important;
-    position: static !important;
-  }
-
-  .preview-content-area {
-    max-height: none !important;
-    overflow: visible !important;
-    height: auto !important;
-    padding: 0 !important;
   }
 
   .resume-paper {
     padding: 0 !important;
     margin: 0 !important;
     width: 100% !important;
+    max-width: none !important;
     min-height: auto !important;
     max-height: none !important;
     overflow: visible !important;
     box-shadow: none !important;
     border: none !important;
     border-radius: 0 !important;
+    background: white !important;
+    color: black !important;
+    display: block !important;
+  }
+
+  .resume-paper * {
+    color: black !important;
+    border-color: #334155 !important;
+    /* slate-700 equivalent for borders */
   }
 
   .resume-paper a {
     text-decoration: none !important;
+    color: black !important;
   }
 
   /* Allow templates to control their own typography via Tailwind */

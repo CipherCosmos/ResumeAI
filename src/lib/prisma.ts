@@ -55,7 +55,9 @@ function createPrismaClient() {
 
     const pool = new pg.Pool({
         connectionString: finalConnectionString,
-        ssl: sslOptions
+        ssl: sslOptions,
+        connectionTimeoutMillis: 5000, // Wait 5 seconds to connect before timing out
+        idleTimeoutMillis: 30000,       // Close idle clients after 30 seconds
     });
     const adapter = new PrismaPg(pool);
     return new PrismaClient({ adapter } as unknown as any);

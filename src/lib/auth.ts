@@ -39,7 +39,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
         GoogleProvider({
             clientId: process.env.GOOGLE_CLIENT_ID,
             clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-            allowDangerousEmailAccountLinking: true,
+            allowDangerousEmailAccountLinking: false,
         })
     );
 }
@@ -50,7 +50,7 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
         GitHubProvider({
             clientId: process.env.GITHUB_CLIENT_ID,
             clientSecret: process.env.GITHUB_CLIENT_SECRET,
-            allowDangerousEmailAccountLinking: true,
+            allowDangerousEmailAccountLinking: false,
         })
     );
 }
@@ -61,7 +61,7 @@ if (process.env.LINKEDIN_CLIENT_ID && process.env.LINKEDIN_CLIENT_SECRET) {
         LinkedInProvider({
             clientId: process.env.LINKEDIN_CLIENT_ID,
             clientSecret: process.env.LINKEDIN_CLIENT_SECRET,
-            allowDangerousEmailAccountLinking: true,
+            allowDangerousEmailAccountLinking: false,
             issuer: 'https://www.linkedin.com/oauth',
             jwks_endpoint: 'https://www.linkedin.com/oauth/openid/jwks',
             profile(profile) {
@@ -189,20 +189,27 @@ export const authOptions: NextAuthOptions = {
             if (session.user) {
                 (session.user as { id?: string; credits?: number }).id = token.id as string;
 
-                // Fetch latest user details from DB along with their linked OAuth accounts
-                const dbUser = await prisma.user.findUnique({
-                    where: { id: token.id as string },
-                    include: { accounts: true }
-                });
+                try {
+                    // Fetch latest user details from DB along with their linked OAuth accounts.
+                    // We wrap this in a try-catch because if the DB is slow or unreachable,
+                    // we don't want to crash the whole request or return a 401.
+                    const dbUser = await prisma.user.findUnique({
+                        where: { id: token.id as string },
+                        include: { accounts: true }
+                    });
 
-                if (dbUser) {
-                    (session.user as any).credits = dbUser.credits ?? 0;
-                    (session.user as any).name = dbUser.name;
-                    (session.user as any).image = dbUser.image;
-                    (session.user as any).phone = (dbUser as any).phone;
-                    (session.user as any).address = (dbUser as any).address;
-                    // Pass down an array of connected provider IDs (e.g. ['google', 'github', 'linkedin'])
-                    (session.user as any).connectedProviders = dbUser.accounts.map(acc => acc.provider);
+                    if (dbUser) {
+                        (session.user as any).credits = dbUser.credits ?? 0;
+                        (session.user as any).name = dbUser.name;
+                        (session.user as any).image = dbUser.image;
+                        (session.user as any).phone = (dbUser as any).phone;
+                        (session.user as any).address = (dbUser as any).address;
+                        (session.user as any).connectedProviders = dbUser.accounts.map(acc => acc.provider);
+                    }
+                } catch (error) {
+                    console.error('Error fetching user data in session callback:', error);
+                    // Fallback: If DB lookups fail, the user is still technically 'logged in' via JWT,
+                    // they just might see cached/stale data for a moment.
                 }
             }
             return session;

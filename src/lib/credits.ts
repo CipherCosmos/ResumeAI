@@ -90,6 +90,10 @@ export async function refundCredits(
         const user = await prisma.user.findUnique({ where: { id: userId } });
         return { success: true, remaining: user?.credits ?? 0 };
     }
+    // Verify user exists first
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return { success: false, remaining: 0, error: 'User not found' };
+
     const updated = await prisma.user.update({
         where: { id: userId },
         data: { credits: { increment: cost } },
@@ -109,6 +113,20 @@ export async function addCredits(
     type: 'PURCHASE' | 'BONUS',
     description: string
 ): Promise<CreditResult> {
+    // Safely check if user exists first to avoid P2025 update error
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, credits: true }
+    });
+
+    if (!user) {
+        return {
+            success: false,
+            remaining: 0,
+            error: 'User record not found in database. This might happen if your account was recently deleted or database was reset. Please sign out and sign in again.'
+        };
+    }
+
     const updated = await prisma.user.update({
         where: { id: userId },
         data: { credits: { increment: amount } },

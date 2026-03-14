@@ -788,9 +788,11 @@ function analyzeFormat(resumeText: string) {
 
 // ─── Score Computation ───────────────────────────────
 
-export function runATSAnalysis(resumeText: string, jobDescription: string): ATSEngineResult {
+export function runATSAnalysis(resumeText: string, jobDescription: string, manualKeywords?: KeywordMatch[]): ATSEngineResult {
     // 1. Extract & match keywords
-    const rawKeywords = extractKeywords(jobDescription);
+    const rawKeywords = manualKeywords && manualKeywords.length > 0
+        ? manualKeywords
+        : extractKeywords(jobDescription);
     const keywords = matchKeywords(rawKeywords, resumeText);
 
     const matched = keywords.filter(k => k.found);

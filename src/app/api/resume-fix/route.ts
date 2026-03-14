@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { callAI } from '@/lib/ai';
+import { rateLimit } from '@/lib/rate-limit';
+import { logger } from '@/lib/logger';
 
 /**
  * POST /api/resume-fix
@@ -18,6 +20,14 @@ export async function POST(req: Request) {
         const session = await getServerSession(authOptions);
         if (!session?.user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+        const userId = (session.user as any).id;
+
+        // Rate limiting: 20 fixes per hour per user
+        const limiter = await rateLimit(`resume-fix:${userId}`, 20, 3600);
+        if (!limiter.success) {
+            logger.warn('Rate limit exceeded for resume fix', { userId });
+            return NextResponse.json({ error: 'Rate limit exceeded. Please try again in an hour.' }, { status: 429 });
         }
 
         const { fixType, data } = await req.json();
@@ -61,13 +71,14 @@ Return ONLY valid JSON. No markdown, no code blocks.
 REMEMBER: You are EDITING, not WRITING. Keep every fact the same. Only improve the verb and sentence structure.`;
 
             const response = await callAI({ messages: [{ role: 'user', content: prompt }], max_tokens: 2000 });
-            const text = typeof response === 'string' ? response : response?.content || '';
+            const text = response?.content || '';
             const cleaned = text.replace(/```json\s*/g, '').replace(/```/g, '').trim();
 
             try {
                 const parsed = JSON.parse(cleaned);
                 return NextResponse.json({ fixedExperience: parsed.experience });
-            } catch {
+            } catch (err) {
+                logger.error('Failed to parse AI bullet fix JSON', err, { userId, content: cleaned.substring(0, 500) });
                 return NextResponse.json({ error: 'AI response was not valid JSON' }, { status: 500 });
             }
         }
@@ -96,7 +107,7 @@ Experience: ${expSummary}
 Return ONLY the summary text. No JSON, no markdown, no quotes.`;
 
             const response = await callAI({ messages: [{ role: 'user', content: prompt }], max_tokens: 500 });
-            const summaryText = typeof response === 'string' ? response : response?.content || '';
+            const summaryText = response?.content || '';
 
             return NextResponse.json({ summary: summaryText.replace(/^["']|["']$/g, '').trim() });
         }
@@ -134,13 +145,14 @@ Return ONLY valid JSON:
 }`;
 
             const response = await callAI({ messages: [{ role: 'user', content: prompt }], max_tokens: 1500 });
-            const text = typeof response === 'string' ? response : response?.content || '';
+            const text = response?.content || '';
             const cleaned = text.replace(/```json\s*/g, '').replace(/```/g, '').trim();
 
             try {
                 const parsed = JSON.parse(cleaned);
                 return NextResponse.json({ fixedProjects: parsed.projects });
-            } catch {
+            } catch (err) {
+                logger.error('Failed to parse AI projects fix JSON', err, { userId });
                 return NextResponse.json({ error: 'AI response was not valid JSON' }, { status: 500 });
             }
         }
@@ -152,7 +164,7 @@ Return ONLY valid JSON:
             ⛔ ABSOLUTE RULES:
             - Fix malformed URLs (ensure they start with https:// if they look like domains)
             - Normalize date formats if they look messy
-            - Ensure fields like 'year' are simple strings (e.g. "2023" or "2021-Present")
+            - Ensure fields like 'year' are simple strings (e.g., "2023" or "2021-Present")
             - If a required field like 'institution' is lowercase and messy, capitalize it properly
             - NEVER invent new entries or remove existing ones
             - Return the ENTIRE data object back with your fixes applied
@@ -163,20 +175,21 @@ Return ONLY valid JSON:
             Return ONLY the valid JSON object. No commentary.`;
 
             const response = await callAI({ messages: [{ role: 'user', content: prompt }], max_tokens: 3000 });
-            const text = typeof response === 'string' ? response : response?.content || '';
+            const text = response?.content || '';
             const cleaned = text.replace(/```json\s*/g, '').replace(/```/g, '').trim();
 
             try {
                 const parsed = JSON.parse(cleaned);
                 return NextResponse.json({ fixedData: parsed });
-            } catch {
+            } catch (err) {
+                logger.error('Failed to parse AI magic repair JSON', err, { userId });
                 return NextResponse.json({ error: 'AI response was not valid JSON' }, { status: 500 });
             }
         }
 
         return NextResponse.json({ error: 'Unknown fix type' }, { status: 400 });
     } catch (err) {
-        console.error('Resume fix error:', err);
+        logger.error('Resume fix API unexpected error', err);
         return NextResponse.json({ error: 'Unexpected error' }, { status: 500 });
     }
 }

@@ -99,7 +99,12 @@ export async function PUT(req: Request) {
 
     if (!id) return NextResponse.json({ error: 'Resume ID required' }, { status: 400 });
 
-    // Verify ownership
+    // Verify ownership and existence
+    const userExists = await prisma.user.findUnique({ where: { id: userId } });
+    if (!userExists) {
+        return NextResponse.json({ error: 'User account not found. Please log out and log in again.' }, { status: 401 });
+    }
+
     const existing = await prisma.resume.findFirst({ where: { id, userId } });
     if (!existing) return NextResponse.json({ error: 'Resume not found or unauthorized' }, { status: 404 });
 

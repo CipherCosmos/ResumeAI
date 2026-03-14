@@ -12,6 +12,8 @@
  *   XAI_API_KEY, GROQ_API_KEY, CEREBRAS_API_KEY, GOOGLE_AI_KEY, OPENROUTER_API_KEY
  */
 
+import { logger } from './logger';
+
 export const AI_MODEL = process.env.AI_MODEL || 'meta-llama/llama-3.3-70b-instruct:free';
 
 // ─── Provider Configs ────────────────────────────────
@@ -103,7 +105,7 @@ export async function callAI(options: {
         }
     }
 
-    console.error('All AI providers exhausted:', errors.join(' | '));
+    logger.error('All AI providers exhausted', { errors });
     throw new Error('All AI models are currently unavailable. Please try again in a few minutes.');
 }
 
@@ -122,45 +124,53 @@ async function tryCall(opts: {
     const isGoogle = opts.providerName === 'Google';
     const url = isGoogle ? `${opts.url}?key=${opts.apiKey}` : opts.url;
 
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-            ...(isGoogle ? {} : { 'Authorization': `Bearer ${opts.apiKey}` }),
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            model: opts.model,
-            temperature: opts.temperature ?? 0.4,
-            max_tokens: opts.max_tokens ?? 1500,
-            messages: opts.messages,
-        }),
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
 
-    // Retryable errors — skip to next
-    if ([400, 403, 404, 429, 500, 503].includes(response.status)) {
-        console.warn(`  ⤳ ${opts.providerName}/${opts.model} → ${response.status}, skipping`);
-        return null;
-    }
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                ...(isGoogle ? {} : { 'Authorization': `Bearer ${opts.apiKey}` }),
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                model: opts.model,
+                temperature: opts.temperature ?? 0.4,
+                max_tokens: opts.max_tokens ?? 1500,
+                messages: opts.messages,
+            }),
+            signal: controller.signal,
+        });
 
-    if (!response.ok) {
-        const errText = await response.text();
-        if (errText.includes('rate') || errText.includes('limit') || errText.includes('429') || errText.includes('No endpoints') || errText.includes('Provider returned error')) {
-            console.warn(`  ⤳ ${opts.providerName}/${opts.model} → provider error, skipping`);
+        // Retryable errors — skip to next
+        if ([400, 403, 404, 429, 500, 503].includes(response.status)) {
+            logger.warn('AI provider returned retryable status', { provider: opts.providerName, model: opts.model, status: response.status });
             return null;
         }
-        throw new Error(`API error (${response.status})`);
+
+        if (!response.ok) {
+            const errText = await response.text();
+            if (errText.includes('rate') || errText.includes('limit') || errText.includes('429') || errText.includes('No endpoints') || errText.includes('Provider returned error')) {
+                logger.warn('AI provider error detected in text', { provider: opts.providerName, model: opts.model });
+                return null;
+            }
+            throw new Error(`API error (${response.status})`);
+        }
+
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content?.trim() || '';
+
+        if (!content) {
+            logger.warn('AI provider returned empty content', { provider: opts.providerName, model: opts.model });
+            return null;
+        }
+
+        logger.info('AI response success', { provider: opts.providerName, model: opts.model });
+        return { content, model: opts.model };
+    } finally {
+        clearTimeout(timeout);
     }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content?.trim() || '';
-
-    if (!content) {
-        console.warn(`  ⤳ ${opts.providerName}/${opts.model} → empty response, skipping`);
-        return null;
-    }
-
-    console.log(`✓ AI response from ${opts.providerName}/${opts.model}`);
-    return { content, model: opts.model };
 }
 
 // ─── Streamed AI Call ────────────────────────────────
@@ -197,7 +207,7 @@ export async function callAIStream(options: {
         }
     }
 
-    console.error('All AI providers exhausted for streaming:', errors.join(' | '));
+    logger.error('All AI providers exhausted for streaming', { errors });
     throw new Error('All AI models are currently unavailable for streaming. Please try again.');
 }
 
@@ -213,31 +223,39 @@ async function tryCallStream(opts: {
     const isGoogle = opts.providerName === 'Google';
     const url = isGoogle ? `${opts.url}?key=${opts.apiKey}` : opts.url;
 
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-            ...(isGoogle ? {} : { 'Authorization': `Bearer ${opts.apiKey}` }),
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            model: opts.model,
-            temperature: opts.temperature ?? 0.4,
-            max_tokens: opts.max_tokens ?? 1500,
-            messages: opts.messages,
-            stream: true,
-        }),
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000); // slightly longer for stream start
 
-    if ([400, 403, 404, 429, 500, 503].includes(response.status)) {
-        return null; // Skip to next
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                ...(isGoogle ? {} : { 'Authorization': `Bearer ${opts.apiKey}` }),
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                model: opts.model,
+                temperature: opts.temperature ?? 0.4,
+                max_tokens: opts.max_tokens ?? 1500,
+                messages: opts.messages,
+                stream: true,
+            }),
+            signal: controller.signal,
+        });
+
+        if ([400, 403, 404, 429, 500, 503].includes(response.status)) {
+            return null; // Skip to next
+        }
+
+        if (!response.ok || !response.body) {
+            return null;
+        }
+
+        logger.info('AI Streaming started', { provider: opts.providerName, model: opts.model });
+        return parseOpenAIStream(response.body);
+    } finally {
+        clearTimeout(timeout);
     }
-
-    if (!response.ok || !response.body) {
-        return null;
-    }
-
-    console.log(`✓ AI Streaming started from ${opts.providerName}/${opts.model}`);
-    return parseOpenAIStream(response.body);
 }
 
 function parseOpenAIStream(body: ReadableStream<Uint8Array>): ReadableStream {

@@ -35,12 +35,17 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Invalid token amount' }, { status: 400 });
         }
 
-        await addCredits(
+        const result = await addCredits(
             session.user.id,
             parsedTokens,
             'PURCHASE',
             `Purchased AI tokens via Razorpay (Order: ${razorpay_order_id})`
         );
+
+        if (!result.success) {
+            console.error('Credit addition failed:', result.error);
+            return NextResponse.json({ error: result.error || 'Failed to add credits' }, { status: 400 });
+        }
 
         return NextResponse.json({ success: true });
     } catch (error: any) {

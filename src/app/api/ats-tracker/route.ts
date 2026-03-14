@@ -5,6 +5,8 @@ import { authOptions } from '@/lib/auth';
 import { checkCredits, deductCredits } from '@/lib/credits';
 import prisma from '@/lib/prisma';
 import { z } from 'zod';
+import { rateLimit } from '@/lib/rate-limit';
+import { logger } from '@/lib/logger';
 
 // GET: return all ATS scores for the user, grouped by resume
 export async function GET() {
@@ -14,6 +16,13 @@ export async function GET() {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
         const userId = (session.user as any).id;
+
+        // Rate limiting: 10 ATS checks per hour per user
+        const limiter = await rateLimit(`ats:${userId}`, 10, 3600);
+        if (!limiter.success) {
+            logger.warn('Rate limit exceeded for ATS tracking history', { userId });
+            return NextResponse.json({ error: 'Rate limit exceeded. Please try again in an hour.' }, { status: 429 });
+        }
 
         const scores = await prisma.atsScore.findMany({
             where: { userId },
@@ -41,7 +50,7 @@ export async function GET() {
 
         return NextResponse.json({ scores, resumes });
     } catch (err) {
-        console.error('ATS tracker GET error:', err);
+        logger.error('ATS tracker GET error', err);
         return NextResponse.json({ error: 'Unexpected error' }, { status: 500 });
     }
 }
@@ -131,6 +140,13 @@ export async function POST(req: Request) {
         }
         const userId = (session.user as any).id;
 
+        // Rate limiting: 10 ATS checks per hour per user
+        const limiter = await rateLimit(`ats:${userId}`, 10, 3600);
+        if (!limiter.success) {
+            logger.warn('Rate limit exceeded for ATS analysis', { userId });
+            return NextResponse.json({ error: 'Rate limit exceeded. Please try again in an hour.' }, { status: 429 });
+        }
+
         const { resumeId, resumeText, jobDescription } = await req.json();
 
         if (!jobDescription) {
@@ -161,7 +177,17 @@ export async function POST(req: Request) {
                 return NextResponse.json({ error: 'Resume is empty' }, { status: 404 });
             }
         } else if (resumeText && resumeText.trim().length > 20) {
-            resumeContent = resumeText;
+            // Check if uploaded text is actually a JSON string from our parser
+            try {
+                const parsed = JSON.parse(resumeText);
+                if (parsed && typeof parsed === 'object' && (parsed.personal || parsed.fullName)) {
+                    resumeContent = resumeDataToText(parsed);
+                } else {
+                    resumeContent = resumeText;
+                }
+            } catch {
+                resumeContent = resumeText;
+            }
             linkedResumeId = null;
         } else {
             return NextResponse.json({ error: 'Please select a resume or upload a document' }, { status: 400 });
@@ -178,8 +204,33 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
         }
 
-        // ─── STEP 1: Run Deterministic ATS Engine ────────────
-        const engineResult = runATSAnalysis(resumeContent, jobDescription);
+        // ─── STEP 1: AI Keyword Extraction (Context-Aware) ────
+        const kwPrompt = `Extract the most important technical skills, soft skills, tools, and methodologies from this Job Description. 
+Return ONLY a JSON array of objects: [{"keyword": "string", "category": "technical" | "soft" | "tool" | "methodology"}].
+Limit to 30 most relevant keywords.
+
+Job Description:
+${jobDescription.substring(0, 3000)}`;
+
+        let aiKeywords: any[] = [];
+        try {
+            const kwResult = await callAI({
+                messages: [
+                    { role: 'system', content: 'You are an expert ATS recruiter. Extract keywords in JSON format.' },
+                    { role: 'user', content: kwPrompt }
+                ],
+                temperature: 0.1,
+                max_tokens: 1000,
+            });
+            let kwContent = kwResult.content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
+            aiKeywords = JSON.parse(kwContent);
+            if (!Array.isArray(aiKeywords)) aiKeywords = [];
+        } catch (err) {
+            logger.error('AI keyword extraction failed, falling back to deterministic', err);
+        }
+
+        // ─── STEP 2: Run Deterministic ATS Engine ────────────
+        const engineResult = runATSAnalysis(resumeContent, jobDescription, aiKeywords.length > 0 ? aiKeywords.map(k => ({ ...k, found: false, frequency: 0 })) : undefined);
 
         // ─── STEP 2: AI for Qualitative Commentary Only ──────
         const matchedKws = engineResult.keywords.filter(k => k.found).map(k => k.keyword);
@@ -242,7 +293,7 @@ ${jobDescription.substring(0, 2000)}
 
             aiCommentary = aiCommentarySchema.parse(parsedJson);
         } catch (err) {
-            console.error('ATS qualitative parse failed. Using defaults.', err);
+            logger.error('ATS qualitative parse failed', err, { userId });
             aiCommentary = {};
         }
 
@@ -308,7 +359,7 @@ ${jobDescription.substring(0, 2000)}
             });
         }
     } catch (err) {
-        console.error('ATS tracker POST error:', err);
+        logger.error('ATS tracker POST error', err);
         return NextResponse.json({ error: 'Unexpected error' }, { status: 500 });
     }
 }

@@ -237,7 +237,7 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
           data: data 
         }),
       }).catch(err => console.error('Silent auto-save failed:', err));
-    }, 3500);
+    }, 5000);
     return () => clearTimeout(timer);
   }, [data, store.currentResumeId]);
 

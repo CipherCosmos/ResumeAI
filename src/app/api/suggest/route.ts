@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { redis } from '@/lib/redis';
 import crypto from 'crypto';
+import { rateLimit } from '@/lib/rate-limit';
+import { logger } from '@/lib/logger';
 
 const suggestionSchema = z.object({
     suggestion: z.string()
@@ -12,6 +14,14 @@ export async function POST(req: Request) {
     try {
         const body = await req.json();
         const { field, value, target_role, job_description, skills } = body;
+
+        // Rate limiting by IP: 50 suggestions per hour
+        const ip = req.headers.get('x-forwarded-for') || 'anonymous';
+        const limiter = await rateLimit(`suggest:${ip}`, 50, 3600);
+        if (!limiter.success) {
+            logger.warn('Rate limit exceeded for suggestions', { ip });
+            return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+        }
 
         if (!field || !value) {
             return NextResponse.json({ suggestion: '' });
@@ -60,7 +70,7 @@ export async function POST(req: Request) {
         // LAYER 3 CACHE: Check Redis
         const cachedData = await redis.get(cacheKey);
         if (cachedData) {
-            console.log(`[CACHE HIT] Redis intercepted suggest request: ${cacheKey}`);
+            logger.info('Suggest cache hit', { cacheKey });
             return NextResponse.json({ suggestion: typeof cachedData === 'string' ? JSON.parse(cachedData).suggestion : (cachedData as any).suggestion || cachedData });
         }
 
@@ -83,11 +93,12 @@ export async function POST(req: Request) {
 
             return NextResponse.json({ suggestion: parsed.suggestion });
         } catch (parseError) {
-            console.error("AI Output Parse Error:", parseError, aiResult.content);
+            logger.error("Suggest AI output parse error", parseError, { content: aiResult.content });
             // Fallback if the AI just returns text anyway
             return NextResponse.json({ suggestion: aiResult.content.replace(/^```json\n|\n```$/g, '') });
         }
-    } catch {
+    } catch (err) {
+        logger.error('Suggest API unexpected error', err);
         return NextResponse.json({ suggestion: '' });
     }
 }

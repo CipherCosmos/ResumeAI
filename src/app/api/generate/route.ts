@@ -4,6 +4,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { deductCredits, checkCredits } from '@/lib/credits';
 import { prisma } from '@/lib/prisma';
+import { rateLimit } from '@/lib/rate-limit';
+import { logger } from '@/lib/logger';
 
 export async function POST(req: Request) {
     try {
@@ -14,6 +16,13 @@ export async function POST(req: Request) {
         }
         const userId = (session.user as any).id;
 
+        // Rate limiting: 5 generations per hour per user
+        const limiter = await rateLimit(`generate:${userId}`, 5, 3600);
+        if (!limiter.success) {
+            logger.warn('Rate limit exceeded for resume generation', { userId });
+            return NextResponse.json({ error: 'Rate limit exceeded. Please try again in an hour.' }, { status: 429 });
+        }
+
         // Pre-check credits (don't deduct yet — we deduct only after success)
         try {
             const creditCheck = await checkCredits(userId, 'GENERATE_RESUME');
@@ -21,7 +30,7 @@ export async function POST(req: Request) {
                 return NextResponse.json({ error: `Insufficient credits. Need ${creditCheck.cost}, have ${creditCheck.balance}.` }, { status: 402 });
             }
         } catch (creditErr: any) {
-            console.error('Credit check failed:', creditErr);
+            logger.error('Credit check failed for generation', creditErr, { userId });
             return NextResponse.json({ error: 'Unable to verify credit balance. Please try again.' }, { status: 500 });
         }
 
@@ -178,7 +187,7 @@ Return ONLY valid JSON. Nothing else.`;
                 max_tokens: 3000,
             });
         } catch (aiErr: any) {
-            console.error('AI call failed:', aiErr.message);
+            logger.error('AI generation call failed', aiErr, { userId });
             return NextResponse.json({ error: aiErr.message || 'All AI models are currently unavailable. Please try again later.' }, { status: 503 });
         }
 
@@ -189,7 +198,7 @@ Return ONLY valid JSON. Nothing else.`;
         try {
             tailoredData = JSON.parse(content);
         } catch (e) {
-            console.error('Failed to parse tailored resume JSON:', content.substring(0, 500));
+            logger.error('Failed to parse tailored resume JSON', e, { userId, content: content.substring(0, 500) });
             return NextResponse.json({ error: 'AI generated invalid data. Please try again.' }, { status: 500 });
         }
 
@@ -224,7 +233,7 @@ Return ONLY valid JSON. Nothing else.`;
                 }
             });
         } catch (dbErr) {
-            console.error('Failed to save tailored resume or deduct credits:', dbErr);
+            logger.error('Failed to save tailored resume or deduct credits', dbErr, { userId });
         }
 
         return NextResponse.json({
@@ -232,7 +241,7 @@ Return ONLY valid JSON. Nothing else.`;
             resumeId: dbRes?.id || null
         });
     } catch (error) {
-        console.error('Generate API error:', error);
+        logger.error('Generate API unexpected error', error);
         return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 });
     }
 }

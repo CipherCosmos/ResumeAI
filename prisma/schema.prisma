@@ -76,6 +76,7 @@ model Transaction {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([userId, createdAt(sort: Desc)])
 }
 
 model Resume {
@@ -92,6 +93,7 @@ model Resume {
   atsScores AtsScore[]
 
   @@index([userId])
+  @@index([userId, createdAt(sort: Desc)])
 }
 
 model AtsScore {
@@ -111,5 +113,6 @@ model AtsScore {
 
   @@index([resumeId])
   @@index([userId])
+  @@index([userId, createdAt(sort: Desc)])
 }
 

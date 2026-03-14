@@ -88,6 +88,7 @@ export default function AtsTrackerPage() {
   const [uploading, setUploading] = useState(false);
   const [jd, setJd] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
+  const [analysisStep, setAnalysisStep] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Detail view
@@ -155,7 +156,13 @@ export default function AtsTrackerPage() {
     const hasResume = inputMode === 'select' ? selectedResume : uploadedText.trim();
     if (!hasResume || !jd.trim()) return;
     setAnalyzing(true);
+    setAnalysisStep('Initializing Neural Feed...');
+    
     try {
+      // Artificial delay for better UX
+      await new Promise(r => setTimeout(r, 800));
+      setAnalysisStep('AI Keyword Extraction...');
+
       const body: any = { jobDescription: jd };
       if (inputMode === 'select') {
         body.resumeId = selectedResume;
@@ -168,6 +175,11 @@ export default function AtsTrackerPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
+
+      setAnalysisStep('Deterministic Analysis...');
+      await new Promise(r => setTimeout(r, 600));
+      setAnalysisStep('Qualitative Commentary...');
+
       const data = await res.json();
       if (res.ok && data.score) {
         setShowModal(false);
@@ -186,6 +198,7 @@ export default function AtsTrackerPage() {
       alert('Network error. Please try again.');
     } finally {
       setAnalyzing(false);
+      setAnalysisStep('');
     }
   };
 
@@ -611,7 +624,7 @@ export default function AtsTrackerPage() {
                 <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.1)_50%,transparent_75%)] bg-[length:250%_250%] group-hover:animate-[shimmer_2s_infinite] pointer-events-none" />
                 <span className="relative z-10 skew-x-[12deg] flex items-center justify-center gap-4">
                   {analyzing ? (
-                    <><Loader2 size={20} className="animate-spin" /> Cross-Referencing patterns...</>
+                    <><Loader2 size={18} className="animate-spin" /> {analysisStep || 'Cross-Referencing patterns...'}</>
                   ) : (
                     <><Zap size={18} /> Initialize Structural Audit</>
                   )}
