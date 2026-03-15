@@ -4,8 +4,12 @@ import type { JobMatchResult, ApplicationStatus, SkillGapResult, ApplicationAnal
 interface JobFilters {
     search: string;
     location: string;
-    type: string;
-    level: string;
+    type: string[];
+    level: string[];
+    discipline: string[];
+    industry: string[];
+    visa: boolean | null;
+    remote: boolean | null;
     sortBy: 'relevance' | 'newest' | 'salary';
     salaryMin: number;
 }
@@ -75,7 +79,18 @@ export const useJobStore = create<JobState>()((set, get) => ({
     setActiveTab: (tab) => set({ activeTab: tab }),
     jobs: [],
     isLoadingJobs: false,
-    filters: { search: '', location: '', type: '', level: '', sortBy: 'relevance', salaryMin: 0 },
+    filters: { 
+        search: '', 
+        location: '', 
+        type: [], 
+        level: [], 
+        discipline: [], 
+        industry: [], 
+        visa: null, 
+        remote: null, 
+        sortBy: 'relevance', 
+        salaryMin: 0 
+    },
     pagination: { page: 1, total: 0, totalPages: 0, hasMore: false },
     setFilters: (newFilters) => set((state) => ({ 
         filters: { ...state.filters, ...newFilters },
@@ -100,7 +115,12 @@ export const useJobStore = create<JobState>()((set, get) => ({
             });
             if (filters.search) params.set('q', filters.search);
             if (filters.location) params.set('location', filters.location);
-            if (filters.level) params.set('experience', filters.level);
+            if (filters.level.length > 0) params.set('experience', filters.level.join(','));
+            if (filters.type.length > 0) params.set('type', filters.type.join(','));
+            if (filters.discipline.length > 0) params.set('discipline', filters.discipline.join(','));
+            if (filters.industry.length > 0) params.set('industry', filters.industry.join(','));
+            if (filters.visa !== null) params.set('visa', filters.visa.toString());
+            if (filters.remote !== null) params.set('remote', filters.remote.toString());
             if (filters.sortBy) params.set('sortBy', filters.sortBy);
             if (filters.salaryMin > 0) params.set('salaryMin', filters.salaryMin.toString());
             
@@ -120,7 +140,8 @@ export const useJobStore = create<JobState>()((set, get) => ({
                     } 
                 });
             }
-        } catch (err) { 
+        }
+ catch (err) { 
             console.error(err); 
         } finally { 
             set({ isLoadingJobs: false }); 
@@ -140,7 +161,12 @@ export const useJobStore = create<JobState>()((set, get) => ({
             });
             if (filters.search) params.set('q', filters.search);
             if (filters.location) params.set('location', filters.location);
-            if (filters.level) params.set('experience', filters.level);
+            if (filters.level.length > 0) params.set('experience', filters.level.join(','));
+            if (filters.type.length > 0) params.set('type', filters.type.join(','));
+            if (filters.discipline.length > 0) params.set('discipline', filters.discipline.join(','));
+            if (filters.industry.length > 0) params.set('industry', filters.industry.join(','));
+            if (filters.visa !== null) params.set('visa', filters.visa.toString());
+            if (filters.remote !== null) params.set('remote', filters.remote.toString());
             if (filters.sortBy) params.set('sortBy', filters.sortBy);
             if (filters.salaryMin > 0) params.set('salaryMin', filters.salaryMin.toString());
             

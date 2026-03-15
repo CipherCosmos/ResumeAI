@@ -14,33 +14,46 @@ export class MaintenanceService {
             logger.info('Maintenance: Refreshing skill demand statistics...');
             await updateMarketDemandStats();
             
-            // 2. Mark stale jobs as inactive (older than 14 days)
+            // 2. Mark stale jobs as inactive based on lastSeen (not seen in 7 days)
             logger.info('Maintenance: Cleaning up stale job postings...');
-            const thresholdDate = new Date();
-            thresholdDate.setDate(thresholdDate.getDate() - 14);
+            const lastSeenThreshold = new Date();
+            lastSeenThreshold.setDate(lastSeenThreshold.getDate() - 7);
             
             const staleResult = await (prisma as any).jobPosting.updateMany({
                 where: {
-                    lastSeen: { lt: thresholdDate },
+                    lastSeen: { lt: lastSeenThreshold },
                     isActive: true
                 },
                 data: { isActive: false }
             });
-            logger.info(`Maintenance: Deactivated ${staleResult.count} stale jobs.`);
+            logger.info(`Maintenance: Deactivated ${staleResult.count} jobs not seen in 7 days.`);
 
-            // 3. Purge persistent "Unknown" jobs
-            const unknownResult = await (prisma as any).jobPosting.updateMany({
+            // 3. Deactivate jobs older than 90 days (Absolute Age)
+            const absoluteThreshold = new Date();
+            absoluteThreshold.setDate(absoluteThreshold.getDate() - 90);
+            const absoluteResult = await (prisma as any).jobPosting.updateMany({
                 where: {
-                    OR: [
-                        { title: 'Unknown Role' },
-                        { company: 'Unknown Company' }
-                    ],
-                    isActive: true,
-                    createdAt: { lt: new Date(Date.now() - 2 * 60 * 60 * 1000) } // At least 2 hours old to allow parsing
+                    postedAt: { lt: absoluteThreshold },
+                    isActive: true
                 },
                 data: { isActive: false }
             });
-            logger.info(`Maintenance: Purged ${unknownResult.count} persistent bad records.`);
+            logger.info(`Maintenance: Deactivated ${absoluteResult.count} jobs older than 90 days.`);
+
+            // 4. Purge persistent "Unknown" jobs or junk data
+            const unknownResult = await (prisma as any).jobPosting.updateMany({
+                where: {
+                    OR: [
+                        { title: { contains: 'Unknown', mode: 'insensitive' } },
+                        { company: { contains: 'Unknown', mode: 'insensitive' } },
+                        { title: { contains: 'Job Opportunity', mode: 'insensitive' } }
+                    ],
+                    isActive: true,
+                    createdAt: { lt: new Date(Date.now() - 1 * 60 * 60 * 1000) } // 1 hour old
+                },
+                data: { isActive: false }
+            });
+            logger.info(`Maintenance: Purged ${unknownResult.count} low-quality records.`);
             
             // 3. Data Integrity: Check for missing embeddings (if applicable)
             // This is a placeholder for future vector db maintenance

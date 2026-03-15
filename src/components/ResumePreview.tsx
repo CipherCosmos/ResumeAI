@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { RefreshCw, FileText, Printer, Loader2, Target, ChevronDown, ChevronUp } from 'lucide-react';
+import { RefreshCw, FileText, Printer, Loader2, Target, ChevronDown, ChevronUp, Check, Sparkles } from 'lucide-react';
 import { useResumeStore } from '@/store/useResumeStore';
 import { ResumeData } from '@/types/resume';
 import dynamic from 'next/dynamic';
@@ -144,11 +144,11 @@ export default function ResumePreview({ resumeMarkdown, resumeData, onReset, job
           {/* ATS Score Badge */}
           {atsLoading && <div className="ats-badge loading"><Loader2 size={13} className="spin-icon" /> Scoring...</div>}
           {atsResult && !atsLoading && (
-            <button className="ats-badge" onClick={() => setAtsExpanded(!atsExpanded)} type="button" style={{ borderColor: getScoreColor(atsResult.score) }}>
-               <Target size={13} />
-               <span style={{ color: getScoreColor(atsResult.score), fontWeight: 700 }}>{atsResult.score}</span>
-               <span>ATS</span>
-               {atsExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+            <button className="ats-badge group" onClick={() => setAtsExpanded(!atsExpanded)} type="button" style={{ borderColor: `${getScoreColor(atsResult.score)}44`, background: `${getScoreColor(atsResult.score)}11` }}>
+               <Target size={12} className="opacity-70 group-hover:scale-110 transition-transform" />
+               <span style={{ color: getScoreColor(atsResult.score), fontWeight: 900, fontSize: '0.7rem' }} className="italic">{atsResult.score}%</span>
+               <span className="text-[0.6rem] font-black uppercase tracking-tighter opacity-70">Neural Match</span>
+               {atsExpanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
             </button>
           )}
         </div>
@@ -160,33 +160,53 @@ export default function ResumePreview({ resumeMarkdown, resumeData, onReset, job
 
       {/* ATS Details Panel */}
       {atsResult && atsExpanded && (
-        <div className="ats-details animate-fade-in">
-          <div className="ats-score-ring">
-            <svg viewBox="0 0 36 36" className="ats-ring-svg">
-              <path className="ats-ring-bg" d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" strokeWidth="3" />
-              <path className="ats-ring-fill" d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" strokeWidth="3"
-                style={{ stroke: getScoreColor(atsResult.score), strokeDasharray: `${atsResult.score}, 100` }} />
-            </svg>
-            <span className="ats-ring-text" style={{ color: getScoreColor(atsResult.score) }}>{atsResult.score}</span>
-          </div>
-          <div className="ats-keywords">
-            {atsResult.matchedKeywords.length > 0 && (
-              <div className="ats-kw-section">
-                <span className="ats-kw-label matched">✓ Matched</span>
-                <div className="skill-chips">{atsResult.matchedKeywords.map((k, i) => <span key={i} className="skill-chip ats-matched">{k}</span>)}</div>
+        <div className="ats-details animate-in slide-in-from-top-2 fade-in duration-300 bg-background/80 backdrop-blur-md border border-accent/20 rounded-2xl p-4 mb-4 shadow-xl">
+          <div className="flex items-center gap-6">
+            <div className="ats-score-ring shrink-0 scale-75 origin-left">
+              <svg viewBox="0 0 36 36" className="ats-ring-svg w-16 h-16">
+                <path className="ats-ring-bg opacity-10" d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="4" />
+                <path className="ats-ring-fill transition-all duration-1000" d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" strokeWidth="4"
+                  style={{ stroke: getScoreColor(atsResult.score), strokeDasharray: `${atsResult.score}, 100` }} />
+              </svg>
+              <span className="ats-ring-text text-xl italic font-black" style={{ color: getScoreColor(atsResult.score) }}>{atsResult.score}</span>
+            </div>
+            
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="ats-keywords space-y-3">
+                {atsResult.matchedKeywords.length > 0 && (
+                  <div className="ats-kw-section">
+                    <span className="text-[0.55rem] font-black uppercase tracking-[0.2em] text-emerald-500 flex items-center gap-1 mb-1.5"><Check size={10} /> Sync Points</span>
+                    <div className="flex flex-wrap gap-1">
+                      {atsResult.matchedKeywords.slice(0, 15).map((k, i) => (
+                        <span key={i} className="px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 text-[0.6rem] font-bold border border-emerald-500/20 italic">{k}</span>
+                      ))}
+                      {atsResult.matchedKeywords.length > 15 && <span className="text-[0.6rem] font-bold text-muted-foreground self-center">+{atsResult.matchedKeywords.length - 15} more</span>}
+                    </div>
+                  </div>
+                )}
+                {atsResult.missingKeywords.length > 0 && (
+                  <div className="ats-kw-section">
+                    <span className="text-[0.55rem] font-black uppercase tracking-[0.2em] text-amber-500 flex items-center gap-1 mb-1.5"><Target size={10} /> Delta Nodes</span>
+                    <div className="flex flex-wrap gap-1">
+                      {atsResult.missingKeywords.slice(0, 15).map((k, i) => (
+                        <span key={i} className="px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-500 text-[0.6rem] font-bold border border-amber-500/20 italic">{k}</span>
+                      ))}
+                      {atsResult.missingKeywords.length > 15 && <span className="text-[0.6rem] font-bold text-muted-foreground self-center">+{atsResult.missingKeywords.length - 15} more</span>}
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-            {atsResult.missingKeywords.length > 0 && (
-              <div className="ats-kw-section">
-                <span className="ats-kw-label missing">✗ Missing</span>
-                <div className="skill-chips">{atsResult.missingKeywords.map((k, i) => <span key={i} className="skill-chip ats-missing">{k}</span>)}</div>
+
+              <div className="ats-suggestions space-y-2 p-3 rounded-xl bg-primary/5 border border-primary/10">
+                <span className="text-[0.55rem] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-1 mb-1"><Sparkles size={10} /> AI Refinement</span>
+                {atsResult.suggestions.slice(0, 3).map((s, i) => (
+                  <p key={i} className="text-[0.65rem] font-medium leading-tight opacity-90 relative pl-3 flex items-start">
+                    <span className="absolute left-0 top-1.5 w-1 h-1 rounded-full bg-primary" />
+                    {s}
+                  </p>
+                ))}
               </div>
-            )}
-            {atsResult.suggestions.length > 0 && (
-              <div className="ats-suggestions">
-                {atsResult.suggestions.map((s, i) => <p key={i} className="ats-suggestion-item">💡 {s}</p>)}
-              </div>
-            )}
+            </div>
           </div>
         </div>
       )}

@@ -65,33 +65,33 @@ export default function JobsPage() {
     }, [activeTab, session, fetchJobs, fetchApplications]);
 
     return (
-        <div className="min-h-screen bg-[#050505] text-zinc-300 selection:bg-primary/30">
+        <div className="h-screen flex flex-col bg-[#050505] text-zinc-300 selection:bg-primary/30 overflow-hidden">
             {/* Ambient Background Elements */}
             <div className="fixed inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px]" />
                 <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-violet-500/5 rounded-full blur-[120px]" />
             </div>
 
-            <div className="container mx-auto max-w-[1600px] pt-32 pb-20 px-4 md:px-12 relative z-10">
-                {/* Header Section - STICKY */}
-                <div className="sticky top-0 pt-12 pb-8 bg-[#050505]/80 backdrop-blur-md z-40 -mt-12 mb-4">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            {/* Compact Header - STATIONARY */}
+            <header className="relative z-20 bg-[#050505]/80 backdrop-blur-md border-b border-white/5 shrink-0">
+                <div className="container mx-auto max-w-[1600px] px-4 md:px-12 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-primary to-violet-600 flex items-center justify-center shrink-0 shadow-lg shadow-primary/20">
+                            <Zap className="text-white" size={20} />
+                        </div>
                         <div>
-                            <div className="flex items-center gap-2 mb-3">
-                                <div className="h-px w-8 bg-primary/50" />
-                                <span className="text-[0.65rem] font-black uppercase tracking-[0.3em] text-primary">Intelligence Engine</span>
-                            </div>
-                            <h1 className="text-4xl md:text-6xl font-black text-white tracking-tighter uppercase italic">
+                            <h1 className="text-xl font-black text-white italic tracking-tight uppercase leading-none">
                                 Neural <span className="text-primary not-italic">Discovery</span>
                             </h1>
-                            <p className="text-zinc-500 text-sm mt-4 max-w-xl font-medium leading-relaxed">
-                                Our AI-driven market discovery engine scans thousands of data points to find roles 
-                                perfectly calibrated to your neural profile.
-                            </p>
+                            <div className="flex items-center gap-2 mt-1">
+                                <div className="h-1 w-1 rounded-full bg-primary animate-pulse" />
+                                <span className="text-[0.55rem] font-bold text-zinc-500 uppercase tracking-widest leading-none">Intelligence v2.0</span>
+                            </div>
                         </div>
+                    </div>
 
-                        {/* Top Navigation / Tabs */}
-                        <div className="flex items-center bg-zinc-900/40 border border-white/5 p-1 rounded-2xl backdrop-blur-xl">
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center bg-zinc-900/60 border border-white/5 p-1 rounded-xl">
                             {[
                                 { id: 'browse', label: 'Feed', icon: LayoutGrid },
                                 { id: 'recommended', label: 'Matches', icon: Sparkles },
@@ -101,46 +101,51 @@ export default function JobsPage() {
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id as any)}
-                                    className={`flex items-center gap-2 px-6 py-3 rounded-xl text-[0.7rem] font-bold uppercase tracking-wider transition-all ${
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[0.65rem] font-black uppercase tracking-wider transition-all ${
                                         activeTab === tab.id 
-                                        ? 'bg-primary text-white shadow-[0_0_20px_rgba(var(--primary-rgb),0.3)]' 
+                                        ? 'bg-primary text-white shadow-lg shadow-primary/20' 
                                         : 'text-zinc-500 hover:text-white hover:bg-white/5'
                                     }`}
                                 >
-                                    <tab.icon size={16} />
+                                    <tab.icon size={14} />
                                     <span className="hidden sm:inline">{tab.label}</span>
                                 </button>
                             ))}
                         </div>
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => setIsFilterOpen(!isFilterOpen)}
+                            className="lg:hidden h-10 w-10 text-zinc-500 border border-white/5 bg-zinc-900/40 rounded-xl"
+                        >
+                            <Filter size={18} />
+                        </Button>
                     </div>
                 </div>
+            </header>
 
-                {/* Main Discovery Interface */}
-                <div className="min-h-[600px]">
-                    {activeTab === 'browse' && (
-                        <div className="flex flex-col lg:flex-row gap-8">
-                            {/* Filter Sidebar */}
-                            <aside className={`lg:w-80 shrink-0 transition-all duration-500 ${isFilterOpen ? 'opacity-100' : 'hidden lg:block opacity-50'}`}>
-                                <div className="sticky top-44">
-                                    <div className="bg-zinc-900/30 border border-white/5 rounded-3xl p-6 backdrop-blur-2xl max-h-[calc(100vh-12rem)] overflow-y-auto custom-scrollbar">
-                                        <JobFiltersSidebar 
-                                            filters={filters} 
-                                            onFilterChange={setFilters} 
-                                            onApply={fetchJobs} 
-                                        />
-                                    </div>
-                                </div>
-                            </aside>
-
-                            {/* Main Content */}
-                            <main className="flex-1 space-y-8">
-                                <BrowseTab 
-                                    jobs={jobs} 
-                                    isLoading={isLoadingJobs} 
-                                    onSearch={(q) => useJobStore.getState().setFilters({ search: q })}
-                                />
-                            </main>
+            {/* Main Discovery Interface - FLEX FILL */}
+            <div className="flex-1 overflow-hidden container mx-auto max-w-[1600px] px-4 md:px-12 relative z-10 flex flex-col lg:flex-row gap-8 py-6">
+                {(activeTab === 'browse') && (
+                    <aside className={`lg:w-80 shrink-0 transition-all duration-500 flex flex-col ${isFilterOpen ? 'opacity-100' : 'hidden lg:block opacity-50'}`}>
+                        <div className="flex-1 overflow-y-auto custom-scrollbar bg-zinc-900/20 border border-white/5 rounded-2xl p-4">
+                            <JobFiltersSidebar 
+                                filters={filters} 
+                                onFilterChange={setFilters} 
+                                onApply={fetchJobs} 
+                            />
                         </div>
+                    </aside>
+                )}
+
+                {/* Independent Scroll Results */}
+                <main className="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-10">
+                    {activeTab === 'browse' && (
+                        <BrowseTab 
+                            jobs={jobs} 
+                            isLoading={isLoadingJobs} 
+                            onSearch={(q) => useJobStore.getState().setFilters({ search: q })}
+                        />
                     )}
                     
                     {activeTab === 'recommended' && (
@@ -167,7 +172,7 @@ export default function JobsPage() {
                             onRefresh={() => selectedResumeId && fetchSkillGap(selectedResumeId)}
                         />
                     )}
-                </div>
+                </main>
             </div>
         </div>
     );
@@ -190,27 +195,32 @@ function BrowseTab({ jobs, isLoading, onSearch }: { jobs: any[], isLoading: bool
     }, [localSearch, fetchJobs, setFilters, filters.search]);
 
     return (
-        <div className="space-y-10">
-            {/* Search Bar Area - STICKY */}
-            <div className="sticky top-44 z-30 pb-4 bg-[#050505]/50 backdrop-blur-sm -mx-2 px-2">
+        <div className="space-y-6">
+            {/* Search Bar Area - STICKY INSIDE SCROLLABLE */}
+            <div className="sticky top-0 z-30 pb-4 bg-[#050505] -mx-1 px-1">
                 <div className="relative group">
-                    <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-violet-500/10 rounded-[2.5rem] blur-xl opacity-0 group-focus-within:opacity-100 transition duration-500" />
-                    <div className="relative flex items-center bg-zinc-900/60 border border-white/10 rounded-[2rem] p-2 backdrop-blur-3xl group-focus-within:border-primary/50 transition-all duration-500">
-                        <div className="flex items-center justify-center h-14 w-14 shrink-0">
-                            <Search className="text-zinc-500 group-focus-within:text-primary transition-colors" size={20} />
+                    <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-violet-500/10 rounded-xl blur opacity-0 group-focus-within:opacity-100 transition duration-500" />
+                    <div className="relative flex items-center bg-zinc-900/60 border border-white/10 rounded-xl p-1 backdrop-blur-3xl group-focus-within:border-primary/50 transition-all duration-500">
+                        <div className="flex items-center justify-center h-10 w-12 shrink-0">
+                            <Search className="text-zinc-600 group-focus-within:text-primary transition-colors" size={16} />
                         </div>
                         <input 
                             type="text" 
                             value={localSearch}
-                            placeholder="Search by role, company name, or technology stack..."
-                            className="flex-1 bg-transparent border-none py-4 text-white placeholder:text-zinc-600 focus:outline-none focus:ring-0 text-sm font-medium pr-6"
+                            placeholder="Quantum scan jobs, companies, or tech stack..."
+                            className="flex-1 bg-transparent border-none py-2 text-white placeholder:text-zinc-600 focus:outline-none focus:ring-0 text-[0.85rem] font-bold"
                             onChange={(e) => setLocalSearch(e.target.value)}
                         />
                         {isLoading && (
-                            <div className="absolute right-6 top-1/2 -translate-y-1/2">
-                                <Loader2 size={18} className="animate-spin text-primary" />
+                            <div className="pr-4">
+                                <Loader2 size={14} className="animate-spin text-primary" />
                             </div>
                         )}
+                        <Button 
+                            className="h-8 rounded-lg bg-primary hover:bg-primary/90 text-white font-black text-[0.6rem] uppercase tracking-widest px-6"
+                        >
+                            Execute
+                        </Button>
                     </div>
                 </div>
             </div>
@@ -289,13 +299,13 @@ function BrowseTab({ jobs, isLoading, onSearch }: { jobs: any[], isLoading: bool
                                     </Button>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-1 gap-6 pb-20">
+                            <div className="grid grid-cols-1 gap-3">
                                 {jobs.map((job, idx) => (
                                     <motion.div
                                         key={job.id}
-                                        initial={{ opacity: 0, y: 20 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: (idx % 10) * 0.05 }}
+                                        initial={{ opacity: 0, scale: 0.98 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        transition={{ delay: (idx % 15) * 0.03 }}
                                     >
                                         <JobCard 
                                             job={job} 

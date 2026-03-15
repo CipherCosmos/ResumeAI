@@ -22,7 +22,8 @@ import {
   Check, 
   BarChart3, 
   Stars,
-  Zap
+  Zap,
+  Shield
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { toast } from 'sonner';
@@ -273,59 +274,63 @@ function DashboardContent() {
   }
 
   return (
-    <div className="flex-1 bg-zinc-50/50 dark:bg-zinc-950/50">
-      <div className="container mx-auto px-6 py-12 md:px-8">
+    <div className="flex-1 bg-zinc-50/50 dark:bg-zinc-950/50 overflow-y-auto custom-scrollbar h-full">
+      <div className="container mx-auto px-4 py-6 md:px-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
-          <div className="space-y-2">
-            <h1 className="text-4xl font-black tracking-tight flex items-center gap-3 text-white italic uppercase leading-none">
-              ORBITAL <span className="text-primary not-italic">DASHBOARD</span> <Sparkles className="text-primary w-8 h-8 animate-pulse" />
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-black tracking-tight flex items-center gap-2 text-white italic uppercase leading-none">
+              ORBITAL <span className="text-primary not-italic">DASHBOARD</span> <Sparkles className="text-primary w-5 h-5 animate-pulse" />
             </h1>
-            <p className="text-zinc-400 font-bold tracking-tight uppercase text-[0.65rem] opacity-70">Authenticated: {session?.user?.name?.split(' ')[0]} {"//"} Balance: {credits} Credits</p>
+            <p className="text-zinc-500 font-bold tracking-tight uppercase text-[0.6rem] opacity-70">
+              {session?.user?.name?.split(' ')[0]} {"//"} Balance: {credits} Tokens
+            </p>
           </div>
-          <div className="flex items-center gap-3">
-             <Button variant="outline" onClick={() => setShowPricing(true)} className="font-bold border-2 h-11 px-6 hover:bg-primary/5 transition-all">
-                <Plus size={16} className="mr-2" /> Buy Credits
+          <div className="flex items-center gap-2">
+             <Button variant="outline" onClick={() => setShowPricing(true)} className="font-bold border-2 h-9 px-4 hover:bg-primary/5 transition-all text-xs">
+                <Plus size={14} className="mr-1.5" /> Buy Credits
              </Button>
              <Link href="/builder">
-                <Button className="font-bold h-11 px-8 shadow-lg hover:scale-105 transition-all">
-                  <Plus size={18} className="mr-2" /> Create New
+                <Button className="font-bold h-9 px-6 shadow-lg hover:scale-105 transition-all text-xs">
+                  <Plus size={16} className="mr-1.5" /> Create New
                 </Button>
              </Link>
           </div>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-           <Card className="border-2 shadow-sm bg-background/60 backdrop-blur">
-              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                <CardTitle className="text-sm font-black uppercase tracking-widest text-muted-foreground">Total Resumes</CardTitle>
-                <FileText className="h-4 w-4 text-primary" />
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+           <Card className="group border-2 shadow-sm bg-background/60 backdrop-blur -skew-x-2 transition-all hover:skew-x-0 hover:border-primary/50 overflow-hidden relative">
+              <div className="absolute top-0 right-0 p-1 opacity-5 group-hover:opacity-10 transition-opacity"><FileText size={80} /></div>
+              <CardHeader className="flex flex-row items-center justify-between p-4 pb-1 space-y-0">
+                <CardTitle className="text-[0.6rem] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-1.5 skew-x-2 group-hover:skew-x-0 transition-all"><FileText size={12} className="text-primary" /> Profiles</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-4xl font-black text-white">{totalResumes}</div>
-                <p className="text-[0.6rem] font-black uppercase tracking-widest text-zinc-500 mt-2">Cloud Deployments</p>
+              <CardContent className="p-4 pt-1 skew-x-2 group-hover:skew-x-0 transition-all">
+                <div className="text-2xl font-black text-white italic">{totalResumes}</div>
+                <p className="text-[0.5rem] font-black uppercase tracking-widest text-zinc-600 mt-1">Logic Ready</p>
               </CardContent>
            </Card>
-           <Card className="border-2 shadow-sm bg-background/60 backdrop-blur">
-              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                <CardTitle className="text-sm font-black uppercase tracking-widest text-muted-foreground">AI Power</CardTitle>
-                <Coins className="h-4 w-4 text-amber-500" />
+           <Card className="group border-2 shadow-sm bg-background/60 backdrop-blur -skew-x-2 transition-all hover:skew-x-0 hover:border-amber-500/50 overflow-hidden relative">
+              <div className="absolute top-0 right-0 p-1 opacity-5 group-hover:opacity-10 transition-opacity"><Coins size={80} /></div>
+              <CardHeader className="flex flex-row items-center justify-between p-4 pb-1 space-y-0">
+                <CardTitle className="text-[0.6rem] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-1.5 skew-x-2 group-hover:skew-x-0 transition-all"><Coins size={12} className="text-amber-500" /> Fuel</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-4xl font-black text-amber-500">{credits}</div>
-                <p className="text-[0.6rem] font-black uppercase tracking-widest text-zinc-500 mt-2">Neural Tokens</p>
+              <CardContent className="p-4 pt-1 skew-x-2 group-hover:skew-x-0 transition-all">
+                <div className="text-2xl font-black text-amber-500 italic">{credits}</div>
+                <p className="text-[0.5rem] font-black uppercase tracking-widest text-zinc-600 mt-1">Neural Tokens</p>
               </CardContent>
            </Card>
-           <Card className="border-2 shadow-sm bg-background/60 backdrop-blur">
-              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 text-zinc-900 dark:text-zinc-100">
-                <CardTitle className="text-sm font-black uppercase tracking-widest text-muted-foreground">ATS Ready</CardTitle>
-                <BarChart3 className="h-4 w-4 text-emerald-500" />
+           <Card className="group border-2 shadow-sm bg-background/60 backdrop-blur -skew-x-2 transition-all hover:skew-x-0 hover:border-emerald-500/50 overflow-hidden relative col-span-2 lg:col-span-1">
+              <div className="absolute top-0 right-0 p-1 opacity-5 group-hover:opacity-10 transition-opacity"><BarChart3 size={80} /></div>
+              <CardHeader className="flex flex-row items-center justify-between p-4 pb-1 space-y-0">
+                <CardTitle className="text-[0.6rem] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-1.5 skew-x-2 group-hover:skew-x-0 transition-all"><Shield size={12} className="text-emerald-500" /> Compliance</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-4xl font-black text-emerald-500">{avgScore}%</div>
-                <div className="mt-3 h-2 w-full bg-zinc-800 rounded-full overflow-hidden">
-                   <div className="h-full bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)]" style={{ width: `${avgScore}%` }} />
+              <CardContent className="p-4 pt-1 skew-x-2 group-hover:skew-x-0 transition-all">
+                <div className="flex items-center gap-3">
+                  <div className="text-2xl font-black text-emerald-500 italic">{avgScore}%</div>
+                  <div className="flex-1 h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden border border-white/5">
+                    <div className="h-full bg-emerald-500 rounded-full transition-all duration-1000" style={{ width: `${avgScore}%` }} />
+                  </div>
                 </div>
               </CardContent>
            </Card>
@@ -339,44 +344,44 @@ function DashboardContent() {
             </h3>
             
             {resumes.length === 0 ? (
-               <div className="flex flex-col items-center justify-center p-16 rounded-[2rem] border-2 border-dashed bg-muted/20 text-center space-y-4">
-                  <div className="w-16 h-16 bg-background rounded-full flex items-center justify-center shadow-lg">
-                    <FileText className="text-muted-foreground" size={24} />
+               <div className="flex flex-col items-center justify-center p-8 rounded-2xl border-2 border-dashed bg-muted/10 text-center space-y-3">
+                  <div className="w-12 h-12 bg-background rounded-full flex items-center justify-center border shadow-sm">
+                    <FileText className="text-muted-foreground opacity-50" size={20} />
                   </div>
                   <div>
-                    <h4 className="font-black text-lg">No resumes yet</h4>
-                    <p className="text-muted-foreground text-sm max-w-[250px]">Your professional journey starts here. Create your first resume.</p>
+                    <h4 className="font-black text-base italic uppercase tracking-tight">System Empty</h4>
+                    <p className="text-muted-foreground text-[0.7rem] max-w-[200px] font-bold uppercase tracking-tight">Deploy your first neural resume profile.</p>
                   </div>
                   <Link href="/builder">
-                    <Button variant="outline" className="font-bold border-2">Start Building</Button>
+                    <Button variant="outline" className="font-bold border-2 h-8 px-4 text-[0.65rem] uppercase tracking-widest">Initial Boot</Button>
                   </Link>
                </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {resumes.map((resume: any) => (
-                  <Card key={resume.id} className="group relative border-2 hover:border-primary transition-all duration-300 overflow-hidden shadow-sm hover:shadow-xl bg-background flex flex-col h-full">
-                    <CardHeader className="p-6 flex flex-row items-start justify-between space-y-0 text-zinc-900 dark:text-zinc-100">
-                      <div className="flex flex-col gap-4">
-                        <div className="w-12 h-12 bg-primary/5 rounded-xl border flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
-                          <FileText size={24} />
+                  <Card key={resume.id} className="group relative border-2 hover:border-primary transition-all duration-300 overflow-hidden shadow-sm bg-background flex flex-col h-full">
+                    <CardHeader className="p-4 flex flex-row items-center justify-between space-y-0 text-zinc-900 dark:text-zinc-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 bg-primary/5 rounded-lg border flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
+                          <FileText size={18} />
                         </div>
                         <div>
-                          <CardTitle className="text-lg font-black tracking-tight line-clamp-1">{resume.title || 'Untitled Resume'}</CardTitle>
-                          <CardDescription className="flex items-center gap-2 mt-1">
-                            <Clock size={12} /> {new Date(resume.updatedAt).toLocaleDateString()}
+                          <CardTitle className="text-sm font-black tracking-tight line-clamp-1">{resume.title || 'Untitled Resume'}</CardTitle>
+                          <CardDescription className="flex items-center gap-1.5 text-[0.65rem] mt-0.5">
+                            <Clock size={10} /> {new Date(resume.updatedAt).toLocaleDateString()}
                           </CardDescription>
                         </div>
                       </div>
-                      <div className="flex flex-col gap-2">
-                        <Button variant="ghost" size="icon" onClick={(e) => handleViewResume(resume.id, e)} className="hover:text-primary transition-colors">
-                          {modalLoading ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : <Eye size={18} />}
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="icon" onClick={(e) => handleViewResume(resume.id, e)} className="h-8 w-8 hover:text-primary">
+                          {modalLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /> : <Eye size={16} />}
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={(e) => handleDelete(resume.id, e)} className="hover:text-error dark:hover:text-red-400 font-bold transition-colors">
-                          <Trash2 size={18} />
+                        <Button variant="ghost" size="icon" onClick={(e) => handleDelete(resume.id, e)} className="h-8 w-8 hover:text-error transition-colors">
+                          <Trash2 size={16} />
                         </Button>
                       </div>
                     </CardHeader>
-                    <CardContent className="mt-auto p-6 pt-0 flex gap-2">
+                    <CardContent className="mt-auto p-4 pt-0 flex gap-2">
                        <Link href={`/builder?id=${resume.id}`} className="flex-1">
                           <Button variant="outline" className="w-full font-bold text-xs uppercase tracking-widest border-2 h-9">
                              Edit
@@ -417,20 +422,20 @@ function DashboardContent() {
 
           <div className="lg:col-span-4 space-y-6">
              <Card className="border-2 shadow-xl bg-zinc-900 border-white/5 text-white overflow-hidden relative group">
-                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-30 transition-opacity"><Stars size={80} /></div>
-                <CardHeader className="p-8 pb-4">
-                  <CardTitle className="text-xl font-black uppercase tracking-widest italic text-white flex items-center gap-2">
-                    <Zap size={20} className="text-primary" /> Power Up
+                <div className="absolute top-0 right-0 p-2 opacity-5 group-hover:opacity-10 transition-opacity"><Zap size={120} /></div>
+                <CardHeader className="p-4 pb-2">
+                  <CardTitle className="text-sm font-black uppercase tracking-widest italic text-white flex items-center gap-1.5">
+                    <Zap size={14} className="text-primary" /> Power Up
                   </CardTitle>
-                  <CardDescription className="text-zinc-400 font-bold text-xs uppercase tracking-widest mt-2">Sector Credits Depleted</CardDescription>
+                  <CardDescription className="text-zinc-500 font-bold text-[0.6rem] uppercase tracking-widest mt-1 italic">Quota Near Depletion</CardDescription>
                 </CardHeader>
-                <CardContent className="p-8 pt-0">
-                   <div className="flex items-baseline gap-2 mb-8 tracking-tighter text-white font-black">
-                      <span className="text-6xl text-primary italic">₹5</span>
-                      <span className="text-zinc-500 uppercase text-[0.6rem] tracking-[0.3em] font-black">ELITE PACK</span>
+                <CardContent className="p-4">
+                   <div className="flex items-baseline gap-1.5 mb-4 tracking-tighter text-white font-black">
+                      <span className="text-4xl text-primary italic">₹5</span>
+                      <span className="text-zinc-500 uppercase text-[0.55rem] tracking-[0.2em] font-black">ELITE PACK</span>
                    </div>
-                   <Button onClick={() => setShowPricing(true)} className="w-full h-14 font-black uppercase tracking-widest text-[0.75rem] bg-white text-black hover:bg-primary hover:text-white transition-all shadow-2xl border-none skew-x-[-12deg]">
-                      <span className="skew-x-[12deg]">Unleash Core</span>
+                   <Button onClick={() => setShowPricing(true)} className="w-full h-10 font-black uppercase tracking-widest text-[0.65rem] bg-white text-black hover:bg-primary hover:text-white transition-all shadow-md border-none skew-x-[-10deg]">
+                      <span className="skew-x-[10deg]">Deploy Core</span>
                    </Button>
                 </CardContent>
              </Card>

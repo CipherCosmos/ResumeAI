@@ -7,17 +7,27 @@ export async function GET(req: Request) {
     try {
         const { searchParams } = new URL(req.url);
         const query = searchParams.get('q') || '';
-        const location = searchParams.get('location'); // Changed to allow undefined
+        const location = searchParams.get('location');
         const salaryMin = parseInt(searchParams.get('salaryMin') || '0');
-        const experience = searchParams.get('experience') || '';
-        const sortBy = searchParams.get('sortBy') || 'newest';
-        const daysOld = searchParams.get('days_old'); // New: Extract days_old
+        
+        // Multiselect support (comma-separated strings)
+        const experience = searchParams.get('experience')?.split(',').filter(Boolean) || [];
+        const types = searchParams.get('type')?.split(',').filter(Boolean) || [];
+        const disciplines = searchParams.get('discipline')?.split(',').filter(Boolean) || [];
+        const industries = searchParams.get('industry')?.split(',').filter(Boolean) || [];
+        
+        // Metadata flags
+        const visa = searchParams.get('visa') === 'true';
+        const remote = searchParams.get('remote') === 'true';
+        
+        const sortBy = searchParams.get('sortBy') || 'relevance';
+        const daysOld = searchParams.get('days_old');
         
         const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
         const pageSize = Math.max(1, parseInt(searchParams.get('pageSize') || '20'));
         const skip = (page - 1) * pageSize;
         
-        // 1. Initial Keyword Search (Prisma)
+        // 1. Build Dynamic Filter
         const where: any = { 
             isActive: true,
             salaryMin: salaryMin ? { gte: salaryMin } : undefined,
@@ -27,26 +37,56 @@ export async function GET(req: Request) {
             where.location = { contains: location, mode: 'insensitive' };
         }
         
-        if (experience) {
-            where.experienceLevel = { contains: experience, mode: 'insensitive' };
+        if (experience.length > 0) {
+            where.experienceLevel = { in: experience };
+        }
+
+        if (types.length > 0) {
+            where.employmentType = { in: types };
+        }
+
+        if (industries.length > 0) {
+            where.industry = { in: industries };
+        }
+
+        if (disciplines.length > 0) {
+            where.OR = disciplines.map(d => ({
+                OR: [
+                    { title: { contains: d, mode: 'insensitive' } },
+                    { description: { contains: d, mode: 'insensitive' } },
+                    { industry: { contains: d, mode: 'insensitive' } }
+                ]
+            }));
+        }
+
+        if (visa) {
+            // Check for visa mention in description if not explicit (professional fallback)
+            where.description = { contains: 'sponsorship', mode: 'insensitive' };
+        }
+
+        if (remote) {
+            where.locationType = 'Remote';
         }
 
         let dateLimit: Date | null = null;
-        if (daysOld) {
-            dateLimit = new Date();
-            dateLimit.setDate(dateLimit.getDate() - parseInt(daysOld));
-            where.postedAt = { gte: dateLimit };
-        }
+        const maxDays = daysOld ? Math.min(parseInt(daysOld), 120) : 90; 
+        
+        dateLimit = new Date();
+        dateLimit.setDate(dateLimit.getDate() - maxDays);
+        where.postedAt = { gte: dateLimit };
 
         if (query) {
             where.OR = [
+                ...(where.OR || []),
                 { title: { contains: query, mode: 'insensitive' } },
                 { company: { contains: query, mode: 'insensitive' } },
                 { description: { contains: query, mode: 'insensitive' } },
             ];
         }
 
+        // 2. Sorting Strategy
         let orderBy: any = [{ postedAt: 'desc' }, { id: 'asc' }];
+        
         if (sortBy === 'salary') {
             orderBy = [{ salaryMax: 'desc' }, { id: 'asc' }];
         }
@@ -64,8 +104,40 @@ export async function GET(req: Request) {
         let finalResults = results;
         let isSemantic = false;
 
-        // 2. Semantic Search Fallback (if keyword results are thin and it's the first page)
-        if (query && results.length < 10 && page === 1) {
+        // 3. Multi-Factor "Best Match" Ranking
+        if (sortBy === 'relevance') {
+            finalResults = results.map((job: any) => {
+                let score = 0;
+                
+                // Recency weight (Max 20)
+                const ageDays = (new Date().getTime() - new Date(job.postedAt).getTime()) / (1000 * 3600 * 24);
+                score += Math.max(0, 20 - ageDays);
+                
+                // Salary weight (Max 15)
+                if (job.salaryMin && salaryMin > 0) {
+                    if (job.salaryMin >= salaryMin * 1.2) score += 15;
+                    else if (job.salaryMin >= salaryMin) score += 10;
+                }
+
+                // Keyword relevance in title (Max 30)
+                if (query) {
+                    const q = query.toLowerCase();
+                    const t = job.title.toLowerCase();
+                    if (t.includes(q)) score += 30;
+                    else if (job.description.toLowerCase().includes(q)) score += 15;
+                }
+
+                // Experience alignment (Max 15)
+                if (experience.length > 0 && job.experienceLevel && experience.includes(job.experienceLevel)) {
+                    score += 15;
+                }
+
+                return { ...job, discoveryScore: score };
+            }).sort((a: any, b: any) => (b.discoveryScore || 0) - (a.discoveryScore || 0));
+        }
+
+        // 4. Semantic Fallback (Enhanced)
+        if (query && results.length < 5 && page === 1) {
             try {
                 const queryVector = await generateEmbedding(query);
                 
@@ -83,14 +155,13 @@ export async function GET(req: Request) {
                     LIMIT ${pageSize}
                 `;
 
-                // Merge and deduplicate
                 const existingIds = new Set(results.map((r: any) => r.id));
                 const filteredSemantic = semanticResults.filter((r: any) => !existingIds.has(r.id));
                 
-                finalResults = [...results, ...filteredSemantic].slice(0, pageSize);
+                finalResults = [...finalResults, ...filteredSemantic].slice(0, pageSize);
                 isSemantic = true;
             } catch (err) {
-                console.error('Semantic search failed, returning keyword results only', err);
+                console.error('Semantic failed', err);
             }
         }
 

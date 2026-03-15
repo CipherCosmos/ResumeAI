@@ -110,27 +110,43 @@ function BuilderContent() {
   const hasResume = resumeMarkdown !== null;
 
   return (
-    <div className="flex-1 bg-muted/30 p-4 md:p-8 max-w-[1600px] mx-auto transition-all duration-500 w-full">
+    <div className="flex-1 bg-zinc-50/50 dark:bg-zinc-950/50 p-4 md:p-6 lg:p-8 max-w-[1800px] mx-auto transition-all duration-500 w-full min-h-screen">
       {error && (
-        <div className="flex items-center gap-2 p-4 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg max-w-3xl mx-auto mb-6">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          <p className="flex-1">{error}</p>
-          <button onClick={() => setError(null)} className="text-destructive hover:opacity-70">&times;</button>
+        <div className="flex items-center gap-3 p-4 text-sm font-bold text-destructive bg-destructive/10 border-2 border-destructive/20 rounded-2xl max-w-4xl mx-auto mb-8 animate-in slide-in-from-top-4">
+          <AlertCircle className="h-5 w-5 shrink-0" />
+          <p className="flex-1 uppercase tracking-tight">{error}</p>
+          <button onClick={() => setError(null)} className="h-8 w-8 flex items-center justify-center rounded-xl hover:bg-destructive/10 transition-colors">&times;</button>
         </div>
       )}
 
-      <main className={`grid gap-6 md:gap-8 items-start transition-all duration-400 ease-in-out ${hasResume ? 'grid-cols-1 xl:grid-cols-2 xl:gap-12 w-full' : 'grid-cols-1 max-w-5xl mx-auto'}`}>
-        <div className="order-1 rounded-xl border bg-card shadow-sm">
-          <ResumeForm onSubmit={handleGenerateResume} isLoading={isLoading} />
+      <main className={`grid gap-8 items-start transition-all duration-700 ease-in-out ${hasResume ? 'grid-cols-1 xl:grid-cols-[1fr_1.2fr] xl:gap-16 w-full' : 'grid-cols-1 max-w-5xl mx-auto pt-12'}`}>
+        <div className={`order-1 transition-all duration-500 ${hasResume ? 'sticky top-24' : ''}`}>
+          <div className="rounded-[2.5rem] border-2 bg-background shadow-2xl overflow-hidden">
+            <ResumeForm onSubmit={handleGenerateResume} isLoading={isLoading} />
+          </div>
+          
+          {hasResume && (
+            <div className="mt-8 flex justify-center opacity-40 hover:opacity-100 transition-opacity">
+               <div className="px-6 py-3 bg-zinc-900 text-zinc-400 rounded-full border border-white/5 font-black text-[0.6rem] uppercase tracking-[0.3em] flex items-center gap-4">
+                  <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Live Sync Active
+               </div>
+            </div>
+          )}
         </div>
         
-        <div id="preview-section" className={`order-2 ${hasResume ? 'lg:sticky lg:top-24 block' : 'hidden'}`}>
-          <ResumePreview
-            resumeMarkdown={resumeMarkdown || ''}
-            onResumeChange={setResumeMarkdown}
-            onReset={() => setResumeMarkdown(null)}
-            jobDescription={lastJD.current}
-          />
+        <div id="preview-section" className={`order-2 transition-all duration-700 ${hasResume ? 'xl:sticky xl:top-24 block' : 'hidden'}`}>
+          <div className="group relative">
+            {/* Perspective Shadow */}
+            <div className="absolute inset-0 bg-primary/5 blur-3xl rounded-none -z-10 group-hover:bg-primary/10 transition-all duration-1000" />
+            
+            <ResumePreview
+              resumeMarkdown={resumeMarkdown || ''}
+              onResumeChange={setResumeMarkdown}
+              onReset={() => setResumeMarkdown(null)}
+              jobDescription={lastJD.current}
+            />
+          </div>
         </div>
       </main>
     </div>

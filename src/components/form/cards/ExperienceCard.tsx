@@ -1,7 +1,8 @@
 import React from 'react';
-import { Trash2, Plus, X, Loader2, Sparkles, ChevronUp, ChevronDown, Building2 } from 'lucide-react';
+import { Trash2, Plus, X, Loader2, Sparkles, ChevronUp, ChevronDown, Building2, MapPin, Calendar, Briefcase } from 'lucide-react';
 import { DebouncedInput } from '@/components/DebouncedInput';
 import { AIBadge } from '@/components/AIBadge';
+import { useResumeStore } from '@/store/useResumeStore';
 import { WorkEntry } from '@/types/resume';
 import { AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 
@@ -34,16 +35,17 @@ export function ExperienceCard({
   onRewriteBullets,
   onGenerateRoleBullets,
 }: ExperienceCardProps) {
+  const precisionMode = useResumeStore(state => state.precisionMode);
   return (
     <AccordionItem value={entry.id} className="rounded-xl border bg-card text-card-foreground shadow-sm group transition-colors hover:border-primary/50 overflow-hidden">
       <div className="flex items-center justify-between pr-4 bg-muted/20">
-        <AccordionTrigger className="hover:no-underline hover:bg-muted/50 px-5 py-4 w-full justify-start gap-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
-            <Building2 size={18} />
+        <AccordionTrigger className={`hover:no-underline hover:bg-muted/50 px-5 transition-all text-left justify-start gap-4 ${precisionMode ? 'py-2' : 'py-4'}`}>
+          <div className={`flex items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0 transition-all ${precisionMode ? 'h-7 w-7' : 'h-10 w-10'}`}>
+            <Building2 size={precisionMode ? 14 : 18} />
           </div>
-          <div className="flex flex-col items-start gap-1 text-left min-w-0">
-            <span className="font-semibold truncate w-full">{entry.jobTitle || 'New Role'}</span>
-            <span className="text-sm text-muted-foreground font-normal truncate w-full">{entry.company || 'Company Name'}</span>
+          <div className="flex flex-col items-start min-w-0 transition-all">
+            <span className={`font-bold truncate w-full tracking-tight ${precisionMode ? 'text-xs' : 'text-base'}`}>{entry.jobTitle || 'New Role'}</span>
+            {!precisionMode && <span className="text-sm text-muted-foreground font-normal truncate w-full">{entry.company || 'Company Name'}</span>}
           </div>
         </AccordionTrigger>
         <div className="flex gap-1 ml-4 shrink-0">
@@ -76,74 +78,99 @@ export function ExperienceCard({
           )}
         </div>
       </div>
-      <AccordionContent className="p-5 pt-4 flex flex-col gap-6 border-t bg-card">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <AccordionContent className={`flex flex-col border-t bg-card transition-all ${precisionMode ? 'p-3 gap-3' : 'p-5 pt-4 gap-6'}`}>
+      <div className={`grid grid-cols-1 md:grid-cols-2 ${precisionMode ? 'gap-3' : 'gap-6'}`}>
         <div className="grid gap-2">
-          <label className="text-base font-semibold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-3">
-            Job Title
-          </label>
-          <DebouncedInput
-            type="text"
-            value={entry.jobTitle}
-            onChangeValue={(val) => onUpdate(entry.id, 'jobTitle', val)}
-            className="flex w-full rounded-md border border-input bg-background px-4 py-3 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            placeholder="Software Engineer"
-            delay={250}
-          />
+          {!precisionMode && (
+            <label className="text-base font-semibold leading-none flex items-center gap-3">
+              Job Title
+            </label>
+          )}
+          <div className="group relative">
+            {precisionMode && <Briefcase size={12} className="absolute left-3 top-2.5 text-muted-foreground/50" />}
+            <DebouncedInput
+              type="text"
+              value={entry.jobTitle}
+              onChangeValue={(val) => onUpdate(entry.id, 'jobTitle', val)}
+              className={`flex w-full rounded-xl border border-input bg-background/50 ring-offset-background placeholder:text-muted-foreground/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all ${precisionMode ? 'px-8 py-2 text-xs h-9' : 'px-4 py-3 text-base'}`}
+              placeholder="Software Engineer"
+              delay={250}
+            />
+          </div>
         </div>
         <div className="grid gap-2">
-          <label className="text-base font-semibold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-3">
-            Company
-          </label>
-          <DebouncedInput
-            type="text"
-            value={entry.company}
-            onChangeValue={(val) => onUpdate(entry.id, 'company', val)}
-            className="flex w-full rounded-md border border-input bg-background px-4 py-3 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            placeholder="Google"
-            delay={250}
-          />
+          {!precisionMode && (
+            <label className="text-base font-semibold leading-none flex items-center gap-3">
+              Company
+            </label>
+          )}
+          <div className="group relative">
+            {precisionMode && <Building2 size={12} className="absolute left-3 top-2.5 text-muted-foreground/50" />}
+            <DebouncedInput
+              type="text"
+              value={entry.company}
+              onChangeValue={(val) => onUpdate(entry.id, 'company', val)}
+              className={`flex w-full rounded-xl border border-input bg-background/50 ring-offset-background placeholder:text-muted-foreground/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all ${precisionMode ? 'px-8 py-2 text-xs h-9' : 'px-4 py-3 text-base'}`}
+              placeholder="Google"
+              delay={250}
+            />
+          </div>
         </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className={`grid grid-cols-1 md:grid-cols-3 ${precisionMode ? 'gap-3' : 'gap-6'}`}>
         <div className="grid gap-2">
-          <label className="text-base font-semibold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-3">
-            Location
-          </label>
-          <DebouncedInput
-            type="text"
-            value={entry.location}
-            onChangeValue={(val) => onUpdate(entry.id, 'location', val)}
-            className="flex w-full rounded-md border border-input bg-background px-4 py-3 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            placeholder="Mountain View, CA"
-            delay={250}
-          />
+          {!precisionMode && (
+            <label className="text-base font-semibold leading-none flex items-center gap-3">
+              Location
+            </label>
+          )}
+          <div className="group relative">
+            {precisionMode && <MapPin size={12} className="absolute left-3 top-2.5 text-muted-foreground/50" />}
+            <DebouncedInput
+              type="text"
+              value={entry.location}
+              onChangeValue={(val) => onUpdate(entry.id, 'location', val)}
+              className={`flex w-full rounded-xl border border-input bg-background/50 ring-offset-background placeholder:text-muted-foreground/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all ${precisionMode ? 'px-8 py-2 text-xs h-9' : 'px-4 py-3 text-base'}`}
+              placeholder="Mountain View, CA"
+              delay={250}
+            />
+          </div>
         </div>
         <div className="grid gap-2">
-          <label className="text-base font-semibold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-3">
-            Start
-          </label>
-          <DebouncedInput
-            type="text"
-            value={entry.startDate}
-            onChangeValue={(val) => onUpdate(entry.id, 'startDate', val)}
-            className="flex w-full rounded-md border border-input bg-background px-4 py-3 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            placeholder="Jan 2022"
-            delay={250}
-          />
+          {!precisionMode && (
+            <label className="text-base font-semibold leading-none flex items-center gap-3">
+              Start
+            </label>
+          )}
+          <div className="group relative">
+            {precisionMode && <Calendar size={12} className="absolute left-3 top-2.5 text-muted-foreground/50" />}
+            <DebouncedInput
+              type="text"
+              value={entry.startDate}
+              onChangeValue={(val) => onUpdate(entry.id, 'startDate', val)}
+              className={`flex w-full rounded-xl border border-input bg-background/50 ring-offset-background placeholder:text-muted-foreground/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all ${precisionMode ? 'px-8 py-2 text-xs h-9' : 'px-4 py-3 text-base'}`}
+              placeholder="Jan 2022"
+              delay={250}
+            />
+          </div>
         </div>
         <div className="grid gap-2">
-          <label className="text-base font-semibold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-3">
-            End
-          </label>
-          <DebouncedInput
-            type="text"
-            value={entry.endDate}
-            onChangeValue={(val) => onUpdate(entry.id, 'endDate', val)}
-            className="flex w-full rounded-md border border-input bg-background px-4 py-3 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            placeholder="Present"
-            delay={250}
-          />
+          {!precisionMode && (
+            <label className="text-base font-semibold leading-none flex items-center gap-3">
+              End
+            </label>
+          )}
+          <div className="group relative">
+            {precisionMode && <Calendar size={12} className="absolute left-3 top-2.5 text-muted-foreground/50" />}
+            <DebouncedInput
+              type="text"
+              value={entry.endDate}
+              onChangeValue={(val) => onUpdate(entry.id, 'endDate', val)}
+              className={`flex w-full rounded-xl border border-input bg-background/50 ring-offset-background placeholder:text-muted-foreground/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all ${precisionMode ? 'px-8 py-2 text-xs h-9' : 'px-4 py-3 text-base'}`}
+              placeholder="Present"
+              delay={250}
+            />
+          </div>
         </div>
       </div>
       <div className="grid gap-2">

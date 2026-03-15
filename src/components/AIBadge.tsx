@@ -18,7 +18,7 @@ export const AIBadge: React.FC<AIBadgeProps> = ({
   type = 'fix',
   className = ''
 }) => {
-  const baseStyles = "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[0.65rem] font-bold uppercase tracking-wider transition-all duration-200 border shadow-sm";
+  const baseStyles = "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[0.6rem] font-black uppercase tracking-wider transition-all duration-300 border shadow-sm hover:shadow-md active:scale-95";
   
   const typeStyles = {
     fix: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/20",

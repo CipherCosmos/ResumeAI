@@ -15,10 +15,12 @@ interface ResumeState {
     data: ResumeData;
     step: number;
     currentResumeId: string | null;
+    precisionMode: boolean;
 
     // Actions
     setStep: (step: number) => void;
     setCurrentResumeId: (id: string | null) => void;
+    togglePrecisionMode: () => void;
     updatePersonal: (field: keyof ResumeData['personal'], value: string) => void;
     updateField: <K extends keyof ResumeData>(field: K, value: ResumeData[K]) => void;
 
@@ -61,6 +63,7 @@ export const useResumeStore = create<ResumeState>()(
 
             setStep: (step) => set({ step }),
             setCurrentResumeId: (id) => set({ currentResumeId: id }),
+            togglePrecisionMode: () => set((state) => ({ precisionMode: !state.precisionMode })),
 
             updatePersonal: (field, value) =>
                 set((state) => ({
@@ -220,6 +223,7 @@ export const useResumeStore = create<ResumeState>()(
             }),
 
             resetForm: () => set({ data: emptyResumeData, step: 0 }),
+            precisionMode: false,
         }),
         {
             name: 'resume-storage', // saves to localStorage

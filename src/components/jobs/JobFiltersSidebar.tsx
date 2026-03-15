@@ -3,16 +3,13 @@
 import React from 'react';
 import { 
     Filter, Briefcase, MapPin, TrendingUp, DollarSign, 
-    X, Check, ChevronDown, Zap, Sparkles
+    X, Check, ChevronDown, Zap, Sparkles, Globe, 
+    ShieldCheck, Heart, UserCheck, Languages
 } from 'lucide-react';
-import { 
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface JobFiltersSidebarProps {
     filters: any;
@@ -20,261 +17,261 @@ interface JobFiltersSidebarProps {
     onApply: () => void;
 }
 
-const FIELDS = [
-    { id: 'software', label: 'Software Engineering' },
-    { id: 'data', label: 'Data & AI' },
-    { id: 'product', label: 'Product & Design' },
-    { id: 'marketing', label: 'Marketing & Sales' },
-    { id: 'finance', label: 'Finance & Ops' },
+const DISCIPLINES = [
+    { id: 'Software', label: 'Software' },
+    { id: 'Data', label: 'Data & AI' },
+    { id: 'Design', label: 'Design' },
+    { id: 'Product', label: 'Product' },
+    { id: 'Operations', label: 'Ops' },
 ];
 
-const DATE_OPTIONS = [
-    { id: 'all', label: 'Any Time' },
-    { id: '24h', label: 'Last 24 Hours' },
-    { id: '3d', label: 'Last 3 Days' },
-    { id: '7d', label: 'Last 7 Days' },
-    { id: '30d', label: 'Last 30 Days' },
+const LEVELS = [
+    { id: 'Entry', label: 'Entry' },
+    { id: 'Mid', label: 'Mid' },
+    { id: 'Senior', label: 'Senior' },
+    { id: 'Lead', label: 'Lead' },
+    { id: 'Executive', label: 'Exec' },
+];
+
+const INDUSTRIES = [
+    { id: 'Fintech', label: 'Fintech' },
+    { id: 'Healthtech', label: 'Health' },
+    { id: 'SaaS', label: 'SaaS' },
+    { id: 'Web3', label: 'Web3' },
+    { id: 'Ecommerce', label: 'Ecomm' },
+];
+
+const COMMITMENTS = [
+    { id: 'full-time', label: 'Full-time' },
+    { id: 'contract', label: 'Contract' },
+    { id: 'part-time', label: 'Part-time' },
 ];
 
 export function JobFiltersSidebar({ filters, onFilterChange, onApply }: JobFiltersSidebarProps) {
-    const handleLevelChange = (val: string) => {
-        onFilterChange({ level: val === 'all' ? '' : val });
+    const toggleArrayFilter = (key: string, value: string) => {
+        const current = filters[key] || [];
+        const next = current.includes(value)
+            ? current.filter((v: string) => v !== value)
+            : [...current, value];
+        onFilterChange({ [key]: next });
         onApply();
     };
 
-    const handleLocationChange = (val: string) => {
-        onFilterChange({ location: val === 'all' ? '' : val });
+    const resetFilters = () => {
+        onFilterChange({
+            level: [],
+            type: [],
+            discipline: [],
+            industry: [],
+            location: '',
+            salaryMin: 0,
+            visa: null,
+            remote: null
+        });
         onApply();
     };
 
-    const handleTypeChange = (val: string) => {
-        onFilterChange({ type: val === 'all' ? '' : val });
-        onApply();
-    };
-
-    const handleFieldChange = (val: string) => {
-        onFilterChange({ field: val === 'all' ? '' : val });
-        onApply();
-    };
-
-    const handleDateChange = (val: string) => {
-        onFilterChange({ datePosted: val === 'all' ? '' : val });
-        onApply();
-    };
+    const hasActiveFilters = Object.entries(filters).some(([key, val]) => {
+        if (Array.isArray(val)) return val.length > 0;
+        if (key === 'salaryMin') return (val as number) > 0;
+        if (key === 'search') return false; 
+        return val !== null && val !== '';
+    });
 
     return (
-        <div className="w-full space-y-8 p-1">
-            <div className="flex items-center justify-between mb-2">
+        <div className="w-full space-y-7 py-2 select-none">
+            {/* Header with Counter */}
+            <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2">
-                    <Filter size={16} className="text-primary" />
-                    <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white">Filters</h3>
+                    <div className="h-5 w-5 rounded bg-primary/20 flex items-center justify-center">
+                        <SlidersHorizontal size={12} className="text-primary" />
+                    </div>
+                    <h3 className="text-[0.65rem] font-black uppercase tracking-[0.2em] text-white">Engine Config</h3>
                 </div>
-                {(filters.level || filters.location || filters.type || filters.field || filters.datePosted || filters.salaryMin > 0) && (
+                {hasActiveFilters && (
                     <button 
-                        onClick={() => {
-                            onFilterChange({ level: '', location: '', type: '', field: '', datePosted: '', salaryMin: 0 });
-                            onApply();
-                        }}
-                        className="text-[0.6rem] font-bold text-zinc-500 hover:text-white uppercase tracking-wider transition-colors"
+                        onClick={resetFilters}
+                        className="text-[0.6rem] font-black text-primary hover:text-white uppercase tracking-widest transition-colors flex items-center gap-1"
                     >
-                        Reset All
+                        <X size={10} /> Reset
                     </button>
                 )}
             </div>
 
-            {/* Experience Level */}
-            <div className="space-y-3">
-                <label className="text-[0.65rem] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-                    <TrendingUp size={12} /> Seniority
-                </label>
-                <Select value={filters.level || 'all'} onValueChange={handleLevelChange}>
-                    <SelectTrigger className="w-full bg-zinc-900/50 border-white/5 text-xs text-white h-11 rounded-xl focus:border-primary/50 transition-all">
-                        <SelectValue placeholder="All Levels" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-zinc-900 border-white/10 text-white">
-                        <SelectItem value="all">All Levels</SelectItem>
-                        <SelectItem value="Entry">Entry Level</SelectItem>
-                        <SelectItem value="Mid">Mid Level</SelectItem>
-                        <SelectItem value="Senior">Senior Level</SelectItem>
-                        <SelectItem value="Lead">Lead / Management</SelectItem>
-                    </SelectContent>
-                </Select>
+            {/* Multiselect Groups */}
+            <div className="space-y-6">
+                {/* Domain Group */}
+                <FilterGroup 
+                    label="Domain" 
+                    icon={<Briefcase size={12} />} 
+                    items={DISCIPLINES}
+                    activeItems={filters.discipline}
+                    onToggle={(id) => toggleArrayFilter('discipline', id)}
+                />
+
+                {/* Seniority Group */}
+                <FilterGroup 
+                    label="Seniority" 
+                    icon={<TrendingUp size={12} />} 
+                    items={LEVELS}
+                    activeItems={filters.level}
+                    onToggle={(id) => toggleArrayFilter('level', id)}
+                />
+
+                {/* Industry Group */}
+                <FilterGroup 
+                    label="Verticals" 
+                    icon={<Globe size={12} />} 
+                    items={INDUSTRIES}
+                    activeItems={filters.industry}
+                    onToggle={(id) => toggleArrayFilter('industry', id)}
+                />
             </div>
 
-            {/* Field / Department */}
-            <div className="space-y-3">
-                <label className="text-[0.65rem] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-                    <Briefcase size={12} /> Domain
-                </label>
-                <Select value={filters.field || 'all'} onValueChange={handleFieldChange}>
-                    <SelectTrigger className="w-full bg-zinc-900/50 border-white/5 text-xs text-white h-11 rounded-xl focus:border-primary/50 transition-all">
-                        <SelectValue placeholder="All Fields" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-zinc-900 border-white/10 text-white">
-                        <SelectItem value="all">All Fields</SelectItem>
-                        {FIELDS.map(f => (
-                            <SelectItem key={f.id} value={f.id}>{f.label}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
+            <Separator className="bg-white/5" />
 
-            {/* Location Type */}
+            {/* Compensation Slider Placeholder / Quick Select */}
             <div className="space-y-3">
-                <label className="text-[0.65rem] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-                    <MapPin size={12} /> Workplace
+                <label className="text-[0.6rem] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2 px-1">
+                    <DollarSign size={12} /> Min Annual Comp
                 </label>
-                <Select value={filters.location || 'all'} onValueChange={handleLocationChange}>
-                    <SelectTrigger className="w-full bg-zinc-900/50 border-white/5 text-xs text-white h-11 rounded-xl focus:border-primary/50 transition-all">
-                        <SelectValue placeholder="All Locations" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-zinc-900 border-white/10 text-white">
-                        <SelectItem value="all">All Locations</SelectItem>
-                        <SelectItem value="Remote">Fully Remote</SelectItem>
-                        <SelectItem value="Hybrid">Hybrid</SelectItem>
-                        <SelectItem value="USA">United States</SelectItem>
-                        <SelectItem value="Europe">Europe</SelectItem>
-                        <SelectItem value="Asia">Asia</SelectItem>
-                    </SelectContent>
-                </Select>
-            </div>
-
-            {/* Employment Type */}
-            <div className="space-y-3">
-                <label className="text-[0.65rem] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-                    <Briefcase size={12} /> Commitment
-                </label>
-                <div className="grid grid-cols-1 gap-2">
-                    {[
-                        { id: 'full-time', label: 'Full-time' },
-                        { id: 'contract', label: 'Contract' },
-                        { id: 'part-time', label: 'Part-time' },
-                    ].map((type) => (
+                <div className="grid grid-cols-3 gap-1.5">
+                    {[60000, 100000, 140000, 180000, 220000, 260000].map((s) => (
                         <button
-                            key={type.id}
-                            onClick={() => handleTypeChange(type.id)}
-                            className={`flex items-center justify-between px-4 py-3 rounded-xl border text-[0.7rem] font-bold transition-all ${
-                                filters.type === type.id
-                                ? 'bg-primary/10 border-primary text-primary'
-                                : 'bg-transparent border-white/5 text-zinc-500 hover:border-white/10 hover:text-zinc-300'
-                            }`}
-                        >
-                            {type.label}
-                            {filters.type === type.id && <Check size={14} />}
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            {/* Salary Range */}
-            <div className="space-y-4">
-                <label className="text-[0.65rem] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-                    <DollarSign size={12} /> Minimum Compensation
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                    {[
-                        { val: 0, label: 'Any' },
-                        { val: 60000, label: '$60K+' },
-                        { val: 100000, label: '$100K+' },
-                        { val: 140000, label: '$140K+' },
-                        { val: 180000, label: '$180K+' },
-                        { val: 220000, label: '$220K+' },
-                    ].map((s) => (
-                        <button
-                            key={s.val}
+                            key={s}
                             onClick={() => {
-                                onFilterChange({ salaryMin: s.val });
+                                onFilterChange({ salaryMin: filters.salaryMin === s ? 0 : s });
                                 onApply();
                             }}
-                            className={`px-3 py-2 rounded-xl border text-[0.65rem] font-bold transition-all ${
-                                filters.salaryMin === s.val
-                                ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-500'
-                                : 'bg-zinc-900/30 border-white/5 text-zinc-500 hover:border-white/10 hover:text-zinc-300'
+                            className={`px-1 py-2 rounded-lg border text-[0.6rem] font-black transition-all ${
+                                filters.salaryMin === s
+                                ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
+                                : 'bg-white/5 border-white/5 text-zinc-500 hover:border-white/10 hover:text-zinc-300'
                             }`}
                         >
-                            {s.label}
+                            ${s/1000}K+
                         </button>
                     ))}
                 </div>
             </div>
 
-            {/* Timeframe */}
-            <div className="space-y-3">
-                <label className="text-[0.65rem] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-                    <Zap size={12} /> Recency
+            {/* Smart Discover Toggles */}
+            <div className="space-y-2">
+                <label className="text-[0.6rem] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2 px-1">
+                    <Zap size={12} className="text-primary" /> Advanced Flags
                 </label>
-                <Select value={filters.datePosted || 'all'} onValueChange={handleDateChange}>
-                    <SelectTrigger className="w-full bg-zinc-900/50 border-white/5 text-xs text-white h-11 rounded-xl focus:border-primary/50 transition-all">
-                        <SelectValue placeholder="Any Time" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-zinc-900 border-white/10 text-white">
-                        {DATE_OPTIONS.map(opt => (
-                            <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
-
-            {/* Smart Filters */}
-            <div className="space-y-4 pt-4 border-t border-white/5">
-                <label className="text-[0.65rem] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-                    <Zap size={12} className="text-primary" /> Smart Discovery
-                </label>
-                <div className="space-y-2">
-                    <button
-                        onClick={() => {
-                            const newLoc = filters.location === 'Remote' ? '' : 'Remote';
-                            onFilterChange({ location: newLoc });
+                <div className="grid grid-cols-1 gap-1.5">
+                    <ToggleFilter 
+                        active={filters.remote === true}
+                        label="Remote Only"
+                        icon={<Globe size={12} />}
+                        onToggle={() => {
+                            onFilterChange({ remote: filters.remote === true ? null : true });
                             onApply();
                         }}
-                        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border text-[0.7rem] font-black uppercase tracking-widest transition-all ${
-                            filters.location === 'Remote'
-                            ? 'bg-primary/10 border-primary/50 text-white shadow-[0_0_20px_rgba(var(--primary-rgb),0.15)]'
-                            : 'bg-zinc-900/30 border-white/5 text-zinc-500 hover:border-white/10'
-                        }`}
-                    >
-                        <span>Remote Only</span>
-                        <div className={`h-4 w-4 rounded-full border-2 transition-all flex items-center justify-center ${
-                            filters.location === 'Remote' ? 'border-primary bg-primary' : 'border-zinc-700'
-                        }`}>
-                            {filters.location === 'Remote' && <Check size={10} className="text-white" />}
-                        </div>
-                    </button>
-                    
-                    <button
-                        onClick={() => {
-                            const newSalary = filters.salaryMin === 150000 ? 0 : 150000;
-                            onFilterChange({ salaryMin: newSalary });
+                    />
+                    <ToggleFilter 
+                        active={filters.visa === true}
+                        label="Visa Sponsorship"
+                        icon={<UserCheck size={12} />}
+                        onToggle={() => {
+                            onFilterChange({ visa: filters.visa === true ? null : true });
                             onApply();
                         }}
-                        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border text-[0.7rem] font-black uppercase tracking-widest transition-all ${
-                            filters.salaryMin >= 150000
-                            ? 'bg-amber-500/10 border-amber-500/50 text-white shadow-[0_0_20px_rgba(245,158,11,0.15)]'
-                            : 'bg-zinc-900/30 border-white/5 text-zinc-500 hover:border-white/10'
-                        }`}
-                    >
-                        <span>High Value Roles</span>
-                        <div className={`h-4 w-4 rounded-full border-2 transition-all flex items-center justify-center ${
-                            filters.salaryMin >= 150000 ? 'border-amber-500 bg-amber-500' : 'border-zinc-700'
-                        }`}>
-                            {filters.salaryMin >= 150000 && <Check size={10} className="text-white" />}
-                        </div>
-                    </button>
+                    />
+                    <ToggleFilter 
+                        active={filters.type.includes('contract')}
+                        label="Contract Work"
+                        icon={<Briefcase size={12} />}
+                        onToggle={() => toggleArrayFilter('type', 'contract')}
+                    />
                 </div>
             </div>
 
-            {/* Quick Stats / Info */}
-            <div className="pt-6 border-t border-white/5 mt-8">
-                <div className="p-5 rounded-2xl bg-gradient-to-br from-primary/10 via-zinc-950 to-black border border-primary/20">
-                    <div className="flex items-center gap-2 mb-3">
-                        <Sparkles size={14} className="text-primary" />
-                        <h4 className="text-[0.6rem] font-black uppercase tracking-[0.2em] text-primary">Neural Optimization</h4>
+            {/* Neural System Status */}
+            <div className="pt-4">
+                <div className="p-4 rounded-xl bg-gradient-to-br from-primary/10 via-black/40 to-black border border-white/5 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:scale-110 transition-transform">
+                        <Sparkles size={24} className="text-primary" />
                     </div>
-                    <p className="text-[0.6rem] text-zinc-500 leading-relaxed font-bold italic">
-                        "CALIBRATED DISCOVERY ARCHITECTURE ACTIVATED. SCANNING MARKET TENSORS FOR OPTIMAL ALIGNMENT."
+                    <div className="flex items-center gap-2 mb-2">
+                        <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                        <span className="text-[0.6rem] font-black text-primary uppercase tracking-widest">Discovery Core</span>
+                    </div>
+                    <p className="text-[0.55rem] text-zinc-500 font-bold leading-relaxed italic uppercase tracking-tighter">
+                        "CALIBRATED FOR PEAK ALIGNMENT. DISCARDING SUB-OPTIMAL NODES."
                     </p>
                 </div>
             </div>
         </div>
     );
 }
+
+// ─── Sub-components ───────────────────────────────────
+
+function FilterGroup({ label, icon, items, activeItems, onToggle }: { 
+    label: string, 
+    icon: React.ReactNode, 
+    items: any[], 
+    activeItems: string[], 
+    onToggle: (id: string) => void 
+}) {
+    return (
+        <div className="space-y-2.5">
+            <div className="flex items-center gap-2 text-[0.6rem] font-black text-zinc-500 uppercase tracking-widest px-1">
+                {icon}
+                <span>{label}</span>
+                {activeItems.length > 0 && (
+                    <Badge variant="secondary" className="ml-auto h-4 px-1 text-[0.55rem] font-black bg-primary/20 text-primary border-none">
+                        {activeItems.length}
+                    </Badge>
+                )}
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+                {items.map(item => {
+                    const isActive = activeItems.includes(item.id);
+                    return (
+                        <button
+                            key={item.id}
+                            onClick={() => onToggle(item.id)}
+                            className={`px-2.5 py-1.5 rounded-lg text-[0.6rem] font-black transition-all border ${
+                                isActive 
+                                ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20 scale-[1.02]' 
+                                : 'bg-white/5 border-white/5 text-zinc-500 hover:border-white/10 hover:text-zinc-300'
+                            }`}
+                        >
+                            {item.label}
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
+function ToggleFilter({ active, label, icon, onToggle }: { active: boolean, label: string, icon: React.ReactNode, onToggle: () => void }) {
+    return (
+        <button
+            onClick={onToggle}
+            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all ${
+                active
+                ? 'bg-primary/10 border-primary/40 text-white'
+                : 'bg-white/5 border-white/5 text-zinc-500 hover:bg-white/[0.07] hover:border-white/10'
+            }`}
+        >
+            <div className="flex items-center gap-2.5">
+                <div className={`p-1.5 rounded-lg transition-colors ${active ? 'bg-primary text-white' : 'bg-black/40 text-zinc-600'}`}>
+                    {icon}
+                </div>
+                <span className="text-[0.65rem] font-black uppercase tracking-widest">{label}</span>
+            </div>
+            <div className={`h-4 w-4 rounded-md border-2 transition-all flex items-center justify-center ${
+                active ? 'border-primary bg-primary' : 'border-zinc-800 bg-black/40'
+            }`}>
+                {active && <Check size={10} className="text-white" strokeWidth={4} />}
+            </div>
+        </button>
+    );
+}
+
+import { SlidersHorizontal } from 'lucide-react';
