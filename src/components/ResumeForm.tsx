@@ -909,17 +909,32 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
   React.useEffect(() => setMounted(true), []);
   if (!mounted) return null;
 
+  const { precisionMode, togglePrecisionMode } = store;
+
   return (
-    <div className="p-6 md:p-10 bg-card text-card-foreground shadow-lg rounded-xl border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm animate-fade-in">
+    <div className={`p-4 md:p-6 lg:p-8 bg-card text-card-foreground shadow-2xl rounded-[2.5rem] border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 transition-all duration-500 animate-fade-in ${precisionMode ? 'high-density' : ''}`}>
       {step > 0 && (
-        <div className="relative h-1.5 w-full bg-muted rounded-full mb-6 overflow-hidden">
-          <div className="h-full bg-gradient-to-r from-primary to-accent transition-all duration-500 rounded-full" style={{ width: `${progress}%` }} />
-          <span className="absolute right-0 -top-5 text-xs font-bold text-primary opacity-80">{progress}%</span>
+        <div className="flex items-center gap-4 mb-8">
+          <div className="relative h-1 w-full bg-muted rounded-full overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-primary via-purple-500 to-accent transition-all duration-1000 rounded-full" style={{ width: `${progress}%` }} />
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[0.65rem] font-black font-mono text-primary">{progress}%</span>
+            <div className="h-4 w-[1px] bg-border" />
+            <button 
+              type="button" 
+              onClick={togglePrecisionMode}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-full border transition-all ${precisionMode ? 'bg-primary border-primary text-primary-foreground' : 'bg-muted/30 border-border text-muted-foreground hover:border-primary/50'}`}
+            >
+              <Zap size={10} className={precisionMode ? 'fill-current' : ''} />
+              <span className="text-[0.6rem] font-bold uppercase tracking-tighter">Precision</span>
+            </button>
+          </div>
         </div>
       )}
 
       {/* === Redesigned Stepper with connecting lines === */}
-      <div className="flex items-start mb-10 overflow-x-auto pb-2 hide-scrollbar">
+      <div className={`flex items-center mb-10 overflow-x-auto pb-4 gap-2 hide-scrollbar transition-all ${precisionMode ? 'opacity-60 grayscale-[0.5] hover:opacity-100 hover:grayscale-0' : ''}`}>
         {STEPS.map((s, i) => {
           const Icon = s.icon;
           const isActive = step === i;
@@ -928,26 +943,24 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
           return (
             <React.Fragment key={s.id}>
               <button
-                className={`flex flex-col items-center gap-1.5 min-w-[80px] p-2 rounded-xl transition-all cursor-pointer hover:bg-muted/50 ${isActive ? 'bg-primary/10' : ''}`}
+                className={`flex flex-col items-center gap-2 min-w-[70px] transition-all cursor-pointer group`}
                 onClick={() => { setStep(i); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                 type="button"
               >
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all shadow-sm ${
-                  isActive ? 'bg-primary text-primary-foreground border-primary shadow-lg scale-110 ring-4 ring-primary/20'
-                  : isComplete ? 'bg-emerald-500 text-white border-emerald-500'
-                  : isPast ? 'bg-amber-500 text-white border-amber-500'
-                  : 'bg-background text-muted-foreground border-input'
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center border-2 transition-all duration-500 shadow-sm ${
+                  isActive ? 'bg-primary text-primary-foreground border-primary shadow-[0_0_20px_rgba(var(--primary-rgb),0.4)] scale-110 -rotate-3'
+                  : isComplete ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/50'
+                  : isPast ? 'bg-amber-500/10 text-amber-500 border-amber-500/50'
+                  : 'bg-zinc-100 dark:bg-zinc-900 text-muted-foreground border-border/50'
                 }`}>
-                  {isComplete ? <Check size={14} /> : <Icon size={14} />}
+                  {isComplete ? <Check size={12} strokeWidth={3} /> : <Icon size={12} />}
                 </div>
-                <span className={`text-xs font-bold whitespace-nowrap transition-colors ${isActive ? 'text-primary' : isPast ? 'text-foreground' : 'text-muted-foreground'}`}>{s.title}</span>
-                <span className={`text-[0.6rem] text-muted-foreground whitespace-nowrap hidden md:block`}>{s.desc}</span>
+                {!precisionMode && (
+                  <span className={`text-[0.6rem] font-black uppercase tracking-widest transition-colors ${isActive ? 'text-primary' : 'text-muted-foreground/60'}`}>{s.title}</span>
+                )}
               </button>
-              {/* Connecting line */}
               {i < STEPS.length - 1 && (
-                <div className="flex-1 flex items-center min-w-[16px] mt-5">
-                  <div className={`h-0.5 w-full rounded-full transition-all duration-500 ${i < step ? 'bg-primary' : 'bg-border'}`} />
-                </div>
+                <div className="flex-1 min-w-[12px] h-[1px] bg-border transition-all mt-[-16px]" />
               )}
             </React.Fragment>
           );
@@ -969,98 +982,91 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
               className="flex flex-col items-center group cursor-pointer transition-transform hover:scale-105 outline-none" 
               title="Click for deep AI analysis & feedback"
             >
-              <div className="relative w-16 h-16">
+              <div className="relative w-12 h-12">
                 <svg className="w-full h-full transform -rotate-90">
-                  <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-muted/20" />
+                  <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="3" fill="transparent" className="text-muted/10" />
                   <circle 
-                    cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="4" 
+                    cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="3" 
                     fill="transparent" 
-                    strokeDasharray={175.9} 
-                    strokeDashoffset={175.9 - (175.9 * (reviewResult?.projectedScore || liveScore)) / 100} 
+                    strokeDasharray={125.6} 
+                    strokeDashoffset={125.6 - (125.6 * (reviewResult?.projectedScore || liveScore)) / 100} 
                     strokeLinecap="round" 
-                    style={{ color: reviewResult ? `hsl(${reviewResult.projectedScore * 1.2}, 70%, 45%)` : scoreColor, transition: 'all 1s ease-out' }} 
+                    style={{ color: reviewResult ? `hsl(${reviewResult.projectedScore * 1.2}, 70%, 45%)` : scoreColor, transition: 'all 1.5s cubic-bezier(0.34, 1.56, 0.64, 1)' }} 
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-xs font-bold" style={{ color: reviewResult ? `hsl(${reviewResult.projectedScore * 1.2}, 70%, 45%)` : scoreColor }}>
+                  <span className="text-[0.6rem] font-black" style={{ color: reviewResult ? `hsl(${reviewResult.projectedScore * 1.2}, 70%, 45%)` : scoreColor }}>
                     {reviewResult?.projectedScore || liveScore}%
                   </span>
-                  <span className="text-[0.4rem] uppercase font-bold text-muted-foreground">{reviewResult ? 'Verified' : 'Estimate'}</span>
                 </div>
-                {(!reviewResult && !reviewLoading && step >= 2) && (
-                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full animate-ping border-2 border-background" />
-                )}
               </div>
-              <div className="flex items-center gap-1 mt-1">
-                <span className={`text-[0.55rem] font-bold ${reviewResult ? 'text-emerald-500' : 'text-muted-foreground'}`}>
-                  {reviewResult ? 'AI Verified' : 'Completeness'}
-                </span>
-                <ChevronDown size={10} className={`text-muted-foreground transition-transform ${showScoreDetails ? 'rotate-180' : ''}`} />
+              <div className="flex items-center gap-1 mt-1 opacity-60 group-hover:opacity-100 transition-opacity">
+                <span className="text-[0.45rem] font-black uppercase tracking-tighter">ATS Optima</span>
               </div>
             </button>
 
             {/* Score Details Popover */}
             {showScoreDetails && (
-              <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-background border border-border shadow-2xl rounded-2xl z-50 p-4 animate-in fade-in zoom-in-95 duration-200 origin-top-right">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-bold flex items-center gap-2"><Shield size={16} className="text-primary" /> ATS Analysis</h3>
-                  <button onClick={() => setShowScoreDetails(false)} className="text-muted-foreground hover:text-foreground"><X size={16} /></button>
+              <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-background border border-accent/20 shadow-2xl rounded-2xl z-50 p-4 animate-in fade-in zoom-in-95 duration-200 origin-top-right">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-xs font-black uppercase tracking-widest flex items-center gap-2 italic"><Shield size={14} className="text-primary" /> Neural Audit</h3>
+                  <button onClick={() => setShowScoreDetails(false)} className="text-muted-foreground hover:text-foreground transition-colors"><X size={14} /></button>
                 </div>
 
                 {!reviewResult ? (
                   <div className="text-center py-6 space-y-3">
-                    <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto text-primary">
-                      <Zap size={24} />
+                    <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center mx-auto text-primary border border-primary/20">
+                      <Zap size={20} className="animate-pulse" />
                     </div>
                     <div>
-                      <p className="text-xs font-semibold">Deep AI Check Pending</p>
-                      <p className="text-[0.7rem] text-muted-foreground px-4">Reach the Review step for a full AI audit, or trigger it manually now.</p>
+                      <p className="text-[0.7rem] font-black uppercase tracking-tight">Logic Check Pending</p>
+                      <p className="text-[0.6rem] text-muted-foreground px-4 uppercase font-bold opacity-60">Run audit to verify ATS metadata synchronization.</p>
                     </div>
                     <button 
                       onClick={handleReviewReadiness} 
                       disabled={reviewLoading}
-                      className="w-full h-8 text-xs font-bold bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-2"
+                      className="w-full h-8 text-[0.65rem] font-black uppercase tracking-widest bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg"
                     >
                       {reviewLoading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                      Run Instant AI Check
+                      Execute Neural Scan
                     </button>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-2 rounded-xl bg-muted/50">
-                      <div className="text-center border-r border-border/50 pr-4 flex-1">
-                        <p className="text-[0.6rem] uppercase text-muted-foreground font-bold leading-tight">Keywords</p>
-                        <p className="text-sm font-bold">{reviewResult.keywordScore}%</p>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-muted/30 border border-border/50">
+                      <div className="text-center border-r border-border/50 pr-2 flex-1">
+                        <p className="text-[0.5rem] uppercase text-muted-foreground font-black tracking-tighter leading-tight opacity-70">Keywords</p>
+                        <p className="text-xs font-black italic">{reviewResult.keywordScore}%</p>
                       </div>
-                      <div className="text-center border-r border-border/50 px-4 flex-1">
-                        <p className="text-[0.6rem] uppercase text-muted-foreground font-bold leading-tight">Format</p>
-                        <p className="text-sm font-bold">{reviewResult.formatScore}%</p>
+                      <div className="text-center border-r border-border/50 px-2 flex-1">
+                        <p className="text-[0.5rem] uppercase text-muted-foreground font-black tracking-tighter leading-tight opacity-70">Format</p>
+                        <p className="text-xs font-black italic">{reviewResult.formatScore}%</p>
                       </div>
-                      <div className="text-center pl-4 flex-1">
-                        <p className="text-[0.6rem] uppercase text-muted-foreground font-bold leading-tight">Bullets</p>
-                        <p className="text-sm font-bold">{reviewResult.bulletScore}%</p>
+                      <div className="text-center pl-2 flex-1">
+                        <p className="text-[0.5rem] uppercase text-muted-foreground font-black tracking-tighter leading-tight opacity-70">Bullets</p>
+                        <p className="text-xs font-black italic">{reviewResult.bulletScore}%</p>
                       </div>
                     </div>
 
                     {reviewResult.sectionChecks && (
-                      <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                        <p className="text-[0.6rem] uppercase font-bold text-muted-foreground tracking-wider">Critical Feedback</p>
-                        {reviewResult.sectionChecks.filter((s:any) => s.status !== 'pass').slice(0, 4).map((s:any, i:number) => (
-                          <div key={i} className="flex gap-2 p-2 rounded-lg bg-red-500/5 border border-red-500/10">
-                            {s.status === 'fail' ? <AlertTriangle size={12} className="text-red-500 shrink-0 mt-0.5" /> : <Info size={12} className="text-amber-500 shrink-0 mt-0.5" />}
+                      <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1 select-none">
+                        <p className="text-[0.5rem] uppercase font-black text-muted-foreground tracking-[0.15em] opacity-80">Critical Telemetry</p>
+                        {reviewResult.sectionChecks.filter((s:any) => s.status !== 'pass').slice(0, 5).map((s:any, i:number) => (
+                          <div key={i} className={`flex gap-2 p-1.5 rounded-lg border transition-all ${s.status === 'fail' ? 'bg-red-500/5 border-red-500/10' : 'bg-amber-500/5 border-amber-500/10'}`}>
+                            {s.status === 'fail' ? <AlertTriangle size={10} className="text-red-500 shrink-0 mt-0.5" /> : <Info size={10} className="text-amber-500 shrink-0 mt-0.5" />}
                             <div className="flex-1">
-                              <p className="text-[0.7rem] font-bold leading-tight">{s.name}</p>
-                              <p className="text-[0.65rem] text-muted-foreground leading-snug">{s.detail}</p>
+                              <p className="text-[0.65rem] font-black uppercase tracking-tight leading-tight">{s.name}</p>
+                              <p className="text-[0.55rem] text-muted-foreground leading-snug font-bold">{s.detail}</p>
                             </div>
                             {s.fixable && (
-                              <button onClick={() => { handleAutoFix(s.fixType); setShowScoreDetails(false); }} className="text-[0.6rem] font-bold text-primary hover:underline self-center shrink-0">Fix</button>
+                              <button onClick={() => { handleAutoFix(s.fixType); setShowScoreDetails(false); }} className="text-[0.55rem] font-black uppercase text-primary hover:underline self-center shrink-0 tracking-widest px-1">Fix</button>
                             )}
                           </div>
                         ))}
                         {reviewResult.sectionChecks.every((s:any) => s.status === 'pass') && (
-                          <div className="flex items-center gap-2 py-4 justify-center text-emerald-500">
-                            <CheckCircle2 size={16} />
-                            <span className="text-xs font-bold">Perfect Score! No issues found.</span>
+                          <div className="flex flex-col items-center gap-2 py-4 justify-center text-emerald-500 bg-emerald-500/5 rounded-xl border border-emerald-500/10">
+                            <CheckCircle2 size={20} className="animate-bounce" />
+                            <span className="text-[0.65rem] font-black uppercase tracking-widest">Profile Optimal</span>
                           </div>
                         )}
                       </div>
@@ -1069,9 +1075,9 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
                     <button 
                       onClick={handleReviewReadiness} 
                       disabled={reviewLoading}
-                      className="w-full h-8 text-xs font-bold border border-primary/20 hover:bg-primary/5 rounded-lg flex items-center justify-center gap-2"
+                      className="w-full h-8 text-[0.6rem] font-black uppercase tracking-widest border-2 border-primary/20 hover:bg-primary/5 rounded-lg flex items-center justify-center gap-2 transition-all"
                     >
-                      <RefreshCcw size={12} /> Re-run Deep Check
+                      <RefreshCcw size={10} /> Sync Audit
                     </button>
                   </div>
                 )}
@@ -1080,8 +1086,8 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
           </div>
         </div>
 
-        {/* AI Expert Advisor Banner */}
-        {AI_ADVISOR_DATA[step] && (
+        {/* AI Expert Advisor Banner (Hide in Precision Mode) */}
+        {AI_ADVISOR_DATA[step] && !precisionMode && (
           <div className="mt-4 flex items-start gap-3 px-4 py-3 rounded-xl bg-primary/5 border border-primary/20 shadow-sm relative overflow-hidden group">
             <div className="absolute top-0 left-0 w-1 h-full bg-primary/40 group-hover:bg-primary transition-colors" />
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0 animate-pulse">
@@ -1394,37 +1400,74 @@ export default function ResumeForm({ onSubmit, isLoading }: ResumeFormProps) {
           </div>
         )}
 
-        <div className="step-nav" style={{ alignItems: 'center' }}>
-          {step > 0 && <button type="button" onClick={prevStep} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-base font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-11 px-6 py-3 text-base"><ChevronLeft size={16} /> Back</button>}
-          
-          <div style={{ flex: 1 }} />
-          
+        <div className="mt-12 flex items-center justify-between gap-4">
           {step > 0 && (
             <button 
               type="button" 
-              onClick={() => setShowConfirmReset(true)}
-              className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-base font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-11 px-6 py-3 text-base" 
-              title="Clear all text and start over"
-              style={{ color: 'var(--error)', borderColor: 'rgba(239,68,68,0.3)', marginRight: '1rem', padding: '0.6rem 0.75rem' }}
+              onClick={prevStep} 
+              className="h-10 px-6 rounded-xl border border-border bg-background hover:bg-muted text-xs font-black uppercase tracking-widest transition-all -skew-x-6 hover:skew-x-0"
             >
-              <RefreshCcw size={16} /> <span className="hide-on-mobile">Start Fresh</span>
+              <div className="flex items-center gap-2 skew-x-6 group-hover:skew-x-0">
+                <ChevronLeft size={14} strokeWidth={3} />
+                Back
+              </div>
             </button>
           )}
-          {step > 0 && !isLastStep && <button type="button" onClick={nextStep} disabled={!canProceed(step)} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-base font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-6 py-3 text-base">Next <ChevronRight size={16} /></button>}
           
-          {isLastStep && (
-            <div style={{ display: 'flex', gap: '0.75rem' }}>
-              <button type="button" onClick={handleGenerateCoverLetter} disabled={coverLetterLoading || !canProceed(1)} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-base font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-11 px-6 py-3 text-base generate-btn" style={{ borderColor: 'var(--accent)', color: 'var(--accent)' }}>
-                {coverLetterLoading ? <><Loader2 size={16} className="spin-icon" /> Generating...</> : <><Sparkles size={16} /> Cover Letter</>}
+          <div className="flex-1" />
+          
+          <div className="flex items-center gap-3">
+            {step > 0 && (
+              <button 
+                type="button" 
+                onClick={() => setShowConfirmReset(true)}
+                className="h-10 w-10 flex items-center justify-center rounded-xl border border-red-500/30 text-red-500 hover:bg-red-500/10 transition-all -skew-x-6" 
+                title="Start Fresh"
+              >
+                <RefreshCcw size={14} className="skew-x-6" />
               </button>
-              <button type="button" onClick={handleSaveDraft} disabled={isSavingDraft || !canProceed(1) || !canProceed(2)} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-base font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-11 px-6 py-3 text-base generate-btn" style={{ color: 'var(--primary)', borderColor: 'var(--primary)' }}>
-                {isSavingDraft ? <><Loader2 size={16} className="spin-icon" /> Saving...</> : <><Check size={16} /> Save Draft</>}
+            )}
+            
+            {step > 0 && !isLastStep && (
+              <button 
+                type="button" 
+                onClick={nextStep} 
+                disabled={!canProceed(step)} 
+                className="h-10 px-8 rounded-xl bg-zinc-900 border border-white/10 text-white shadow-[0_10px_20px_-10px_rgba(0,0,0,0.5)] hover:shadow-primary/20 hover:scale-[1.02] disabled:opacity-50 transition-all -skew-x-6"
+              >
+                <div className="flex items-center gap-2 skew-x-6">
+                  <span className="text-xs font-black uppercase tracking-widest">Next</span>
+                  <ChevronRight size={14} strokeWidth={3} />
+                </div>
               </button>
-              <button type="submit" disabled={isLoading || !canProceed(1) || !canProceed(2)} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-base font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-6 py-3 text-base generate-btn">
-                {isLoading ? <><Loader2 size={16} className="spin-icon" /> Generating...</> : <><Send size={16} /> Generate Resume</>}
-              </button>
-            </div>
-          )}
+            )}
+            
+            {isLastStep && (
+              <div className="flex gap-3">
+                <button 
+                  type="button" 
+                  onClick={handleGenerateCoverLetter} 
+                  disabled={coverLetterLoading || !canProceed(1)} 
+                  className="h-10 px-6 rounded-xl border border-zinc-200 bg-white text-zinc-900 text-xs font-black uppercase tracking-widest transition-all hover:bg-zinc-50 -skew-x-6"
+                >
+                  <div className="flex items-center gap-2 skew-x-6">
+                    {coverLetterLoading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                    <span className="hidden sm:inline">Cover Letter</span>
+                  </div>
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={isLoading || !canProceed(1) || !canProceed(2)} 
+                  className="h-10 px-8 rounded-xl bg-primary text-primary-foreground shadow-[0_10px_20px_-5px_rgba(var(--primary-rgb),0.3)] hover:scale-[1.02] disabled:opacity-50 transition-all -skew-x-6"
+                >
+                  <div className="flex items-center gap-2 skew-x-6">
+                    {isLoading ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                    <span className="text-xs font-black uppercase tracking-widest">Process Resume</span>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {Object.keys(validationErrors).length > 0 && (

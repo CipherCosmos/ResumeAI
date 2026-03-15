@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { unstable_cache, revalidateTag } from 'next/cache';
+import { embeddingQueue } from '@/lib/queue';
 
 const getCachedResumes = (userId: string) => unstable_cache(
     async () => {
@@ -63,6 +64,8 @@ export async function POST(req: Request) {
         },
     });
 
+    await embeddingQueue.add('generate-embedding', { resumeId: resume.id });
+
     revalidateTag(`resumes-${userId}`, {});
 
     return NextResponse.json({ resume });
@@ -116,6 +119,8 @@ export async function PUT(req: Request) {
             markdown: markdown !== undefined ? markdown : existing.markdown,
         },
     });
+
+    await embeddingQueue.add('generate-embedding', { resumeId: updated.id });
 
     revalidateTag(`resumes-${userId}`, {});
     revalidateTag(`resume-${id}`, {});

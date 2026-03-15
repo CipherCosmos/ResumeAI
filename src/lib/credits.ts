@@ -8,6 +8,7 @@ export const CREDIT_COSTS: Record<string, number> = {
     COVER_LETTER: 2,
     REWRITE_BULLETS: 1,
     AI_SUGGEST: 0, // free
+    JOB_MATCH: 1,
 };
 
 export interface CreditResult {

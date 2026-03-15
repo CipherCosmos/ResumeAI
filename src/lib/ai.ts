@@ -69,6 +69,11 @@ const PROVIDERS: ProviderConfig[] = [
     },
 ];
 
+// ─── Cooldown State ────────────────────────────────
+// Track unavailable models to skip them temporarily
+const cooldowns = new Map<string, number>();
+const COOLDOWN_MS = 10 * 60 * 1000; // 10 minute cooldown for rate-limited providers
+
 // ─── Core AI Call ────────────────────────────────────
 export async function callAI(options: {
     messages: { role: string; content: string }[];
@@ -89,6 +94,11 @@ export async function callAI(options: {
 
         for (const key of keys) {
             for (const model of provider.models) {
+                const modelId = `${provider.name}:${model}`;
+                if (cooldowns.has(modelId) && cooldowns.get(modelId)! > Date.now()) {
+                    continue; // Skip models currently on cooldown
+                }
+
                 try {
                     const result = await tryCall({
                         url: provider.url,
@@ -97,9 +107,18 @@ export async function callAI(options: {
                         providerName: provider.name,
                         ...options,
                     });
+
                     if (result) return { ...result, provider: provider.name };
+                    
+                    // If result is null, it's a retryable error (like 429 Rate Limit)
+                    cooldowns.set(modelId, Date.now() + COOLDOWN_MS);
+                    // Aggressive backoff for the entire provider group if we hit multiple 429s? 
+                    // No, let's just add a small sleep per model failure
+                    await new Promise(r => setTimeout(r, 1500)); 
                 } catch (err: unknown) {
                     errors.push(`${provider.name}/${model}: ${(err as Error).message?.substring(0, 60)}`);
+                    cooldowns.set(modelId, Date.now() + COOLDOWN_MS);
+                    await new Promise(r => setTimeout(r, 500));
                 }
             }
         }
@@ -191,6 +210,11 @@ export async function callAIStream(options: {
 
         for (const key of keys) {
             for (const model of provider.models) {
+                const modelId = `${provider.name}:${model}`;
+                if (cooldowns.has(modelId) && cooldowns.get(modelId)! > Date.now()) {
+                    continue; // Skip models currently on cooldown
+                }
+
                 try {
                     const stream = await tryCallStream({
                         url: provider.url,
@@ -199,9 +223,14 @@ export async function callAIStream(options: {
                         providerName: provider.name,
                         ...options,
                     });
+
                     if (stream) return stream;
+                    
+                    // Put on cooldown for retryable errors
+                    cooldowns.set(modelId, Date.now() + COOLDOWN_MS);
                 } catch (err: unknown) {
                     errors.push(`${provider.name}/${model}: ${(err as Error).message?.substring(0, 60)}`);
+                    cooldowns.set(modelId, Date.now() + COOLDOWN_MS);
                 }
             }
         }
@@ -301,3 +330,35 @@ function parseOpenAIStream(body: ReadableStream<Uint8Array>): ReadableStream {
     });
 }
 
+// ─── Embedding Call ─────────────────────────────────
+export async function generateEmbedding(text: string): Promise<number[]> {
+    const apiKey = process.env.JINA_API;
+    if (!apiKey) {
+        throw new Error('JINA_API is required for free embeddings');
+    }
+
+    try {
+        const response = await fetch('https://api.jina.ai/v1/embeddings', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                model: 'jina-embeddings-v2-base-en',
+                input: [text.substring(0, 8000)], // Jina v2-base has 8192 token window
+            }),
+        });
+
+        if (!response.ok) {
+            const err = await response.text();
+            throw new Error(`Jina Embedding Error: ${err}`);
+        }
+
+        const data = await response.json();
+        return data.data[0].embedding; // 768 dimensions
+    } catch (err) {
+        logger.error('Failed to generate Jina embedding', err);
+        throw err;
+    }
+}

@@ -1,7 +1,8 @@
 import React, { useRef, memo } from 'react';
-import { User, Mail, Phone, MapPin, Linkedin, Github, Globe, Trash2, Sparkles } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Linkedin, Github, Globe, Trash2, Sparkles, Building2, Briefcase } from 'lucide-react';
 import { DebouncedInput } from '@/components/DebouncedInput';
 import { AIBadge } from '@/components/AIBadge';
+import { useResumeStore } from '@/store/useResumeStore';
 import { ResumeData } from '@/types/resume';
 
 interface Props {
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export const PersonalSection = memo(function PersonalSection({ data, template, updatePersonal }: Props) {
+  const precisionMode = useResumeStore(state => state.precisionMode);
   const profileImageRef = useRef<HTMLInputElement>(null);
 
   const handleProfileImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -29,120 +31,147 @@ export const PersonalSection = memo(function PersonalSection({ data, template, u
   };
 
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in-50 duration-500 animate-fade-in">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className={`flex flex-col animate-in fade-in-50 duration-500 animate-fade-in transition-all ${precisionMode ? 'gap-3' : 'gap-6'}`}>
+      <div className={`grid grid-cols-1 md:grid-cols-2 ${precisionMode ? 'gap-3' : 'gap-6'}`}>
         <div className="grid gap-2">
-          <label className="text-base font-semibold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"><User size={14} /> Full Name <span className="text-destructive font-normal">*</span></label>
-          <DebouncedInput
-            type="text"
-            value={data.fullName}
-            onChangeValue={(value) => updatePersonal('fullName', value)}
-            className="flex w-full rounded-md border border-input bg-background px-4 py-3 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            placeholder="Jane Doe"
-            required
-            delay={250}
-          />
+          {!precisionMode && <label className="text-base font-semibold leading-none flex items-center gap-2"><User size={14} /> Full Name <span className="text-destructive font-normal">*</span></label>}
+          <div className="group relative">
+            {precisionMode && <User size={12} className="absolute left-3 top-2.5 text-muted-foreground/50" />}
+            <DebouncedInput
+              type="text"
+              value={data.fullName}
+              onChangeValue={(value) => updatePersonal('fullName', value)}
+              className={`flex w-full rounded-xl border border-input bg-background/50 ring-offset-background placeholder:text-muted-foreground/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all ${precisionMode ? 'px-8 py-2 text-xs h-9' : 'px-4 py-3 text-base'}`}
+              placeholder="Jane Doe"
+              required
+              delay={250}
+            />
+          </div>
         </div>
         <div className="grid gap-2">
-          <label className="text-base font-semibold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"><Mail size={14} /> Email <span className="text-destructive font-normal">*</span></label>
-          <DebouncedInput
-            type="email"
-            value={data.email}
-            onChangeValue={(value) => updatePersonal('email', value)}
-            className="flex w-full rounded-md border border-input bg-background px-4 py-3 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            placeholder="jane@example.com"
-            delay={250}
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="grid gap-2">
-          <label className="text-base font-semibold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"><Phone size={14} /> Phone</label>
-          <DebouncedInput
-            type="tel"
-            value={data.phone}
-            onChangeValue={(value) => updatePersonal('phone', value)}
-            className="flex w-full rounded-md border border-input bg-background px-4 py-3 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            placeholder="+1 234 567 8900"
-            delay={250}
-          />
-        </div>
-        <div className="grid gap-2">
-          <label className="text-base font-semibold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"><MapPin size={14} /> Location</label>
-          <DebouncedInput
-            type="text"
-            value={data.location}
-            onChangeValue={(value) => updatePersonal('location', value)}
-            className="flex w-full rounded-md border border-input bg-background px-4 py-3 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            placeholder="San Francisco, CA"
-            delay={250}
-          />
+          {!precisionMode && <label className="text-base font-semibold leading-none flex items-center gap-2"><Mail size={14} /> Email <span className="text-destructive font-normal">*</span></label>}
+          <div className="group relative">
+            {precisionMode && <Mail size={12} className="absolute left-3 top-2.5 text-muted-foreground/50" />}
+            <DebouncedInput
+              type="email"
+              value={data.email}
+              onChangeValue={(value) => updatePersonal('email', value)}
+              className={`flex w-full rounded-xl border border-input bg-background/50 ring-offset-background placeholder:text-muted-foreground/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all ${precisionMode ? 'px-8 py-2 text-xs h-9' : 'px-4 py-3 text-base'}`}
+              placeholder="jane@example.com"
+              delay={250}
+            />
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className={`grid grid-cols-1 md:grid-cols-2 ${precisionMode ? 'gap-3' : 'gap-6'}`}>
         <div className="grid gap-2">
-          <label className="text-base font-semibold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2">
-            <Linkedin size={14} /> LinkedIn
-            {data.linkedin && !data.linkedin.startsWith('http') && (
-              <AIBadge 
-                label="AI Fix" 
-                onClick={() => updatePersonal('linkedin', `https://${data.linkedin.replace(/^(http:\/\/|https:\/\/)/, '')}`)}
-                className="ml-auto"
-              />
-            )}
-          </label>
-          <DebouncedInput
-            type="text"
-            value={data.linkedin}
-            onChangeValue={(value) => updatePersonal('linkedin', value)}
-            className="flex w-full rounded-md border border-input bg-background px-4 py-3 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            placeholder="linkedin.com/in/janedoe"
-            delay={250}
-          />
+          {!precisionMode && <label className="text-base font-semibold leading-none flex items-center gap-2"><Phone size={14} /> Phone</label>}
+          <div className="group relative">
+            {precisionMode && <Phone size={12} className="absolute left-3 top-2.5 text-muted-foreground/50" />}
+            <DebouncedInput
+              type="tel"
+              value={data.phone}
+              onChangeValue={(value) => updatePersonal('phone', value)}
+              className={`flex w-full rounded-xl border border-input bg-background/50 ring-offset-background placeholder:text-muted-foreground/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all ${precisionMode ? 'px-8 py-2 text-xs h-9' : 'px-4 py-3 text-base'}`}
+              placeholder="+1 234 567 8900"
+              delay={250}
+            />
+          </div>
         </div>
         <div className="grid gap-2">
-          <label className="text-base font-semibold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2">
-            <Github size={14} /> GitHub
-            {data.github && !data.github.startsWith('http') && (
-              <AIBadge 
-                label="AI Fix" 
-                onClick={() => updatePersonal('github', `https://${data.github.replace(/^(http:\/\/|https:\/\/)/, '')}`)}
-                className="ml-auto"
-              />
-            )}
-          </label>
-          <DebouncedInput
-            type="text"
-            value={data.github}
-            onChangeValue={(value) => updatePersonal('github', value)}
-            className="flex w-full rounded-md border border-input bg-background px-4 py-3 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            placeholder="github.com/janedoe"
-            delay={250}
-          />
+          {!precisionMode && <label className="text-base font-semibold leading-none flex items-center gap-2"><MapPin size={14} /> Location</label>}
+          <div className="group relative">
+            {precisionMode && <MapPin size={12} className="absolute left-3 top-2.5 text-muted-foreground/50" />}
+            <DebouncedInput
+              type="text"
+              value={data.location}
+              onChangeValue={(value) => updatePersonal('location', value)}
+              className={`flex w-full rounded-xl border border-input bg-background/50 ring-offset-background placeholder:text-muted-foreground/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all ${precisionMode ? 'px-8 py-2 text-xs h-9' : 'px-4 py-3 text-base'}`}
+              placeholder="San Francisco, CA"
+              delay={250}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className={`grid grid-cols-1 md:grid-cols-2 ${precisionMode ? 'gap-3' : 'gap-6'}`}>
+        <div className="grid gap-2">
+          {!precisionMode && (
+            <label className="text-base font-semibold leading-none flex items-center gap-2">
+              <Linkedin size={14} /> LinkedIn
+              {data.linkedin && !data.linkedin.startsWith('http') && (
+                <AIBadge 
+                  label="AI Fix" 
+                  onClick={() => updatePersonal('linkedin', `https://${data.linkedin.replace(/^(http:\/\/|https:\/\/)/, '')}`)}
+                  className="ml-auto"
+                />
+              )}
+            </label>
+          )}
+          <div className="group relative">
+            {precisionMode && <Linkedin size={12} className="absolute left-3 top-2.5 text-muted-foreground/50" />}
+            <DebouncedInput
+              type="text"
+              value={data.linkedin}
+              onChangeValue={(value) => updatePersonal('linkedin', value)}
+              className={`flex w-full rounded-xl border border-input bg-background/50 ring-offset-background placeholder:text-muted-foreground/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all ${precisionMode ? 'px-8 py-2 text-xs h-9' : 'px-4 py-3 text-base'}`}
+              placeholder="linkedin.com/in/janedoe"
+              delay={250}
+            />
+          </div>
+        </div>
+        <div className="grid gap-2">
+          {!precisionMode && (
+            <label className="text-base font-semibold leading-none flex items-center gap-2">
+              <Github size={14} /> GitHub
+              {data.github && !data.github.startsWith('http') && (
+                <AIBadge 
+                  label="AI Fix" 
+                  onClick={() => updatePersonal('github', `https://${data.github.replace(/^(http:\/\/|https:\/\/)/, '')}`)}
+                  className="ml-auto"
+                />
+              )}
+            </label>
+          )}
+          <div className="group relative">
+            {precisionMode && <Github size={12} className="absolute left-3 top-2.5 text-muted-foreground/50" />}
+            <DebouncedInput
+              type="text"
+              value={data.github}
+              onChangeValue={(value) => updatePersonal('github', value)}
+              className={`flex w-full rounded-xl border border-input bg-background/50 ring-offset-background placeholder:text-muted-foreground/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all ${precisionMode ? 'px-8 py-2 text-xs h-9' : 'px-4 py-3 text-base'}`}
+              placeholder="github.com/janedoe"
+              delay={250}
+            />
+          </div>
         </div>
       </div>
 
       <div className="grid gap-2">
-        <label className="text-base font-semibold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2">
-          <Globe size={14} /> Portfolio / Website
-          {data.portfolio && !data.portfolio.startsWith('http') && (
-            <AIBadge 
-              label="AI Fix" 
-              onClick={() => updatePersonal('portfolio', `https://${data.portfolio.replace(/^(http:\/\/|https:\/\/)/, '')}`)}
-              className="ml-auto"
-            />
-          )}
-        </label>
-        <DebouncedInput
-          type="text"
-          value={data.portfolio}
-          onChangeValue={(value) => updatePersonal('portfolio', value)}
-          className="flex w-full rounded-md border border-input bg-background px-4 py-3 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-          placeholder="https://janedoe.dev"
-          delay={250}
-        />
+        {!precisionMode && (
+          <label className="text-base font-semibold leading-none flex items-center gap-2">
+            <Globe size={14} /> Portfolio / Website
+            {data.portfolio && !data.portfolio.startsWith('http') && (
+              <AIBadge 
+                label="AI Fix" 
+                onClick={() => updatePersonal('portfolio', `https://${data.portfolio.replace(/^(http:\/\/|https:\/\/)/, '')}`)}
+                className="ml-auto"
+              />
+            )}
+          </label>
+        )}
+        <div className="group relative">
+          {precisionMode && <Globe size={12} className="absolute left-3 top-2.5 text-muted-foreground/50" />}
+          <DebouncedInput
+            type="text"
+            value={data.portfolio}
+            onChangeValue={(value) => updatePersonal('portfolio', value)}
+            className={`flex w-full rounded-xl border border-input bg-background/50 ring-offset-background placeholder:text-muted-foreground/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all ${precisionMode ? 'px-8 py-2 text-xs h-9' : 'px-4 py-3 text-base'}`}
+            placeholder="https://janedoe.dev"
+            delay={250}
+          />
+        </div>
       </div>
 
       {template === 'modern' && (
