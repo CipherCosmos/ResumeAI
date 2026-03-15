@@ -72,7 +72,7 @@ const PROVIDERS: ProviderConfig[] = [
 // ─── Cooldown State ────────────────────────────────
 // Track unavailable models to skip them temporarily
 const cooldowns = new Map<string, number>();
-const COOLDOWN_MS = 60 * 1000; // 1 minute cooldown for rate-limited providers
+const COOLDOWN_MS = 10 * 60 * 1000; // 10 minute cooldown for rate-limited providers
 
 // ─── Core AI Call ────────────────────────────────────
 export async function callAI(options: {
@@ -111,11 +111,14 @@ export async function callAI(options: {
                     if (result) return { ...result, provider: provider.name };
                     
                     // If result is null, it's a retryable error (like 429 Rate Limit)
-                    // Put it on cooldown
                     cooldowns.set(modelId, Date.now() + COOLDOWN_MS);
+                    // Aggressive backoff for the entire provider group if we hit multiple 429s? 
+                    // No, let's just add a small sleep per model failure
+                    await new Promise(r => setTimeout(r, 1500)); 
                 } catch (err: unknown) {
                     errors.push(`${provider.name}/${model}: ${(err as Error).message?.substring(0, 60)}`);
                     cooldowns.set(modelId, Date.now() + COOLDOWN_MS);
+                    await new Promise(r => setTimeout(r, 500));
                 }
             }
         }

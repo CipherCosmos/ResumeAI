@@ -44,33 +44,38 @@ export class AIOrchestrator {
                 LIMIT 5
             ` as { location: string, count: number }[];
 
-            const prompt = `
+                const statsString = JSON.stringify(stats, (key, value) =>
+                    typeof value === 'bigint' ? value.toString() : value
+                );
+                
+                const prompt = `
                 You are a senior recruitment strategist. Your goal is to maximize the diversity and volume of fresh job listings in our portal.
                 
-                Current Top Locations in DB: ${JSON.stringify(stats)}
+                Current Top Locations in DB: ${statsString}
                 
-                Generate 12 high-priority search queries for Firecrawl.
+                Generate 15 high-priority search queries for Firecrawl.
                 
-                CRITICAL REQUIREMENT: At least 60% of these queries MUST target:
-                - "Summer Internship 2026"
-                - "Software Engineering Intern"
-                - "Graduate Engineering Trainee"
-                - "New Grad 2026"
-                - "Entry Level" positions for freshers
-                - "Batch of 2025/2026" hiring
+                CRITICAL REQUIREMENT: At least 70% of these queries MUST target:
+                - "Summer Internship 2026" & "Winter Internship 2025"
+                - "Software Engineering Intern" & "Product Management Intern"
+                - "Graduate Engineering Trainee" & "Management Trainee"
+                - "New Grad 2026" & "Batch of 2026 Hiring"
+                - "Rotational Programs" & "Leadership Development Programs (LDP)"
+                - "Entry Level" positions for freshers in Finance, Operations, and HR
+                - "Diversity Hiring" & "Off-campus Drive 2026"
 
                 Focus on:
-                1. Companies known for hiring interns (Big Tech, high-growth startups).
-                2. Gaps in current coverage (Locations: ${JSON.stringify(stats)}).
-                3. High-growth sectors (AI, Cybersecurity, Fintech).
-                4. Job titles like "Associate", "Junior", "Trainee".
-                5. Platforms like "Unstop", "Naukri Campus", "Indeed Internships".
+                1. Tier-1 and Tier-2 companies known for structured internship programs.
+                2. Gaps in current coverage (Locations: ${statsString}).
+                3. Specialized sectors: High-frequency trading, Space-tech, Climate-tech, and Biotech.
+                4. Professional domains: Support, Sales, Marketing, and Legal (beyond just Dev).
+                5. Platforms like "Unstop", "Naukri Campus", "Indeed Internships", and company-specific "University Relations" pages.
 
                 Return ONLY a JSON object with this structure:
                 {
                     "queries": ["query 1", "query 2", ...],
                     "priorityRoles": ["role 1", ...],
-                    "targetPlatforms": ["linkedin.com/jobs", "lever.co", ...]
+                    "targetPlatforms": ["linkedin.com/jobs", "internshala.com", "lever.co", "greenhouse.io", "workable.com", "jobs.google.com", "amazon.jobs"]
                 }
             `;
 
@@ -172,6 +177,48 @@ export class AIOrchestrator {
     }
 
     private static extractJson(text: string): string {
+        try {
+            // First try to find the outermost { or [
+            const startBrace = text.indexOf('{');
+            const startBracket = text.indexOf('[');
+            
+            let start = -1;
+            let end = -1;
+            let type: 'object' | 'array' | null = null;
+
+            if (startBrace !== -1 && (startBracket === -1 || startBrace < startBracket)) {
+                start = startBrace;
+                type = 'object';
+            } else if (startBracket !== -1) {
+                start = startBracket;
+                type = 'array';
+            }
+
+            if (start === -1) return text;
+
+            // Find matching closing character
+            const openChar = type === 'object' ? '{' : '[';
+            const closeChar = type === 'object' ? '}' : ']';
+            
+            let count = 0;
+            for (let i = start; i < text.length; i++) {
+                if (text[i] === openChar) count++;
+                else if (text[i] === closeChar) count--;
+                
+                if (count === 0) {
+                    end = i;
+                    break;
+                }
+            }
+
+            if (end !== -1) {
+                return text.substring(start, end + 1);
+            }
+        } catch (e: any) {
+            logger.warn('JSON extraction helper failed', { error: e.message || e });
+        }
+
+        // Fallback to original regex
         const match = text.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
         return match ? match[0] : text;
     }

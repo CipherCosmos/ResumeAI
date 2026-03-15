@@ -1,276 +1,301 @@
-import prisma from '@/lib/prisma';
-import { parseJobDescription } from './parser';
-import { logger } from '@/lib/logger';
+import { logger } from '../logger';
 
-const JINA_API_KEY = process.env.JINA_API;
-const FIRECRAWL_API_KEY = process.env.FIRECRAWL_API;
-
-// ─── Query Rotation Config ───────────────────────────
-const TARGET_RESOURCES = [
-    { site: 'linkedin.com/jobs', label: 'LinkedIn' },
-    { site: 'indeed.com', label: 'Indeed' },
-    { site: 'foundit.in', label: 'Foundit' },
-    { site: 'wellfound.com', label: 'Wellfound' },
-    { site: 'glassdoor.com/Job', label: 'Glassdoor' },
-    { site: 'naukri.com', label: 'Naukri' },
-];
-
-const JOB_ROLES = [
-    'Software Engineer', 'Frontend Developer', 'Backend Developer', 
-    'Fullstack Developer', 'DevOps Engineer', 'AI Engineer', 
-    'Data Scientist', 'Product Manager'
-];
-// ─────────────────────────────────────────────────────
-
-
-async function fetchRemotiveJobs() {
-    try {
-        const res = await fetch('https://remotive.com/api/remote-jobs?limit=10');
-        const data = await res.json();
-        return (data.jobs || []).slice(0, 5); // Limit for testing/stability
-    } catch (err) {
-        logger.error('Remotive fetch failed', err);
-        return [];
-    }
+export interface CrawlerResult {
+    url: string;
+    title?: string;
+    description?: string;
+    markdown?: string;
+    json?: any;
+    metadata?: any;
 }
 
-async function fetchArbeitnowJobs() {
-    try {
-        const res = await fetch('https://www.arbeitnow.com/api/job-board-api');
-        const data = await res.json();
-        return (data.data || []).slice(0, 5); // Limit for testing/stability
-    } catch (err) {
-        logger.error('Arbeitnow fetch failed', err);
-        return [];
-    }
+export interface SearchResult extends CrawlerResult {
+    snippet?: string;
 }
 
-async function scrapeWithFirecrawl(query: string, limit = 15) {
-    if (!FIRECRAWL_API_KEY) return [];
-    try {
-        const res = await fetch('https://api.firecrawl.dev/v1/search', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${FIRECRAWL_API_KEY}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                query,
-                limit
-            })
-        });
-        const data = await res.json();
-        return (data.data || data.results || []).slice(0, limit);
-    } catch (err) {
-        logger.error('Firecrawl scraping failed', err);
-        return [];
-    }
+export interface ScrapeOptions {
+    formats?: string[];
+    jsonOptions?: { schema: any };
+    waitFor?: number;
 }
 
-async function getMarkdownWithJina(url: string) {
-    if (!JINA_API_KEY) return '';
-    try {
-        const res = await fetch(`https://r.jina.ai/${url}`, {
-            headers: {
-                'Authorization': `Bearer ${JINA_API_KEY}`,
-                'X-Return-Format': 'markdown'
+export interface CrawlerProvider {
+    name: string;
+    search(query: string, limit?: number): Promise<SearchResult[]>;
+    scrape(url: string, options?: ScrapeOptions): Promise<CrawlerResult | null>;
+    isAvailable(): boolean;
+}
+
+// ─── Firecrawl Provider ──────────────────────────────────────────
+class FirecrawlProvider implements CrawlerProvider {
+    name = 'firecrawl';
+    private apiKey = process.env.FIRECRAWL_API;
+
+    isAvailable() { return !!this.apiKey; }
+
+    async search(query: string, limit = 10): Promise<SearchResult[]> {
+        if (!this.apiKey) return [];
+        try {
+            const res = await fetch('https://api.firecrawl.dev/v1/search', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.apiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ query, limit })
+            });
+
+            if (res.status === 402) {
+                logger.warn('Firecrawl Provider: Credits exhausted (402)');
+                return [];
             }
-        });
-        return await res.text();
-    } catch (err) {
-        logger.error('Jina Reader failed', err);
-        return '';
-    }
-}
 
-// Helper to run tasks with concurrency limit
-async function runWithConcurrencyLimit(tasks: (() => Promise<any>)[], limit: number) {
-    const results: any[] = [];
-    const executing: Promise<any>[] = [];
-    for (const task of tasks) {
-        const p = task();
-        results.push(p);
-        if (limit <= tasks.length) {
-            const e: Promise<any> = p.then(() => executing.splice(executing.indexOf(e), 1));
-            executing.push(e);
-            if (executing.length >= limit) {
-                await Promise.race(executing);
-            }
-        }
-    }
-    return Promise.all(results);
-}
-
-export async function crawlJobs() {
-    logger.info('Starting multi-source job crawl...');
-    let totalIngested = 0;
-
-    // 1. Fetch from Direct APIs
-    const [remotiveJobs, arbeitJobs] = await Promise.all([
-        fetchRemotiveJobs(),
-        fetchArbeitnowJobs()
-    ]);
-
-    const ingestTasks: (() => Promise<void>)[] = [];
-
-    // Remotive Tasks
-    remotiveJobs.forEach((job: any) => {
-        ingestTasks.push(async () => {
-            try {
-                const parsed = await parseJobDescription(job.description || '');
-                await (prisma as any).jobPosting.upsert({
-                    where: { externalId: job.id.toString() },
-                    update: {
-                        title: job.title,
-                        company: job.company_name,
-                        location: 'Remote',
-                        salary: job.salary || parsed.salary,
-                        salaryMin: parsed.salaryMin,
-                        salaryMax: parsed.salaryMax,
-                        skills: parsed.skills,
-                        experienceLevel: parsed.experienceLevel,
-                        employmentType: job.job_type || parsed.employmentType,
-                        isActive: true,
-                        updatedAt: new Date(),
-                    },
-                    create: {
-                        externalId: job.id.toString(),
-                        title: job.title,
-                        company: job.company_name,
-                        location: 'Remote',
-                        description: job.description,
-                        salary: job.salary || parsed.salary,
-                        salaryMin: parsed.salaryMin,
-                        salaryMax: parsed.salaryMax,
-                        skills: parsed.skills,
-                        experienceLevel: parsed.experienceLevel,
-                        employmentType: job.job_type || parsed.employmentType,
-                        source: 'remotive',
-                        sourceUrl: job.url,
-                        isActive: true,
-                    },
-                });
-                totalIngested++;
-            } catch (e: any) {
-                logger.warn(`Failed to ingest Remotive job ${job.id}`, e);
-            }
-        });
-    });
-
-    // Arbeitnow Tasks
-    arbeitJobs.forEach((job: any) => {
-        ingestTasks.push(async () => {
-            try {
-                const parsed = await parseJobDescription(job.description || '');
-                await (prisma as any).jobPosting.upsert({
-                    where: { externalId: job.slug },
-                    update: {
-                        title: job.title,
-                        company: job.company_name,
-                        location: job.location,
-                        salary: parsed.salary,
-                        salaryMin: parsed.salaryMin,
-                        salaryMax: parsed.salaryMax,
-                        skills: parsed.skills,
-                        experienceLevel: parsed.experienceLevel,
-                        employmentType: parsed.employmentType,
-                        isActive: true,
-                        updatedAt: new Date(),
-                    },
-                    create: {
-                        externalId: job.slug,
-                        title: job.title,
-                        company: job.company_name,
-                        location: job.location,
-                        description: job.description,
-                        salary: parsed.salary,
-                        salaryMin: parsed.salaryMin,
-                        salaryMax: parsed.salaryMax,
-                        skills: parsed.skills,
-                        experienceLevel: parsed.experienceLevel,
-                        employmentType: parsed.employmentType,
-                        source: 'arbeitnow',
-                        sourceUrl: job.url,
-                        isActive: true,
-                    },
-                });
-                totalIngested++;
-            } catch (e: any) {
-                logger.warn(`Failed to ingest Arbeitnow job ${job.slug}`, e);
-            }
-        });
-    });
-
-    // Execute API tasks with limit
-    await runWithConcurrencyLimit(ingestTasks, 5);
-
-    // 2. Scrape Job Portals via Firecrawl with site-specific rotation
-    logger.info('Searching portals via Firecrawl with platform rotation...');
-    
-    // Pick random combinations
-    const selectedRoles = [...JOB_ROLES].sort(() => 0.5 - Math.random()).slice(0, 2);
-    const selectedSites = [...TARGET_RESOURCES].sort(() => 0.5 - Math.random()).slice(0, 3);
-
-    const portalTasks: (() => Promise<void>)[] = [];
-
-    for (const role of selectedRoles) {
-        for (const target of selectedSites) {
-            const query = `site:${target.site} "${role}" remote jobs`;
-            logger.info(`Executing specialized search: ${query}`);
+            if (!res.ok) throw new Error(`Firecrawl Search Error: ${res.status}`);
             
-            const portalResults = await scrapeWithFirecrawl(query, 10);
-            for (const res of portalResults) {
-                portalTasks.push(async () => {
-                    try {
-                        const targetUrl = res.url || res.link;
-                        if (!targetUrl) return;
-
-                        const markdown = await getMarkdownWithJina(targetUrl);
-                        if (!markdown) return;
-
-                        const parsed = await parseJobDescription(markdown);
-                        await (prisma as any).jobPosting.upsert({
-                            where: { externalId: targetUrl },
-                            update: {
-                                title: parsed.title,
-                                company: parsed.company,
-                                salary: parsed.salary,
-                                salaryMin: parsed.salaryMin,
-                                salaryMax: parsed.salaryMax,
-                                skills: parsed.skills,
-                                experienceLevel: parsed.experienceLevel,
-                                employmentType: parsed.employmentType,
-                                isActive: true,
-                                updatedAt: new Date(),
-                            },
-                            create: {
-                                externalId: targetUrl,
-                                title: parsed.title,
-                                company: parsed.company,
-                                location: 'Check Link',
-                                description: markdown.substring(0, 5000),
-                                salary: parsed.salary,
-                                salaryMin: parsed.salaryMin,
-                                salaryMax: parsed.salaryMax,
-                                skills: parsed.skills,
-                                experienceLevel: parsed.experienceLevel,
-                                employmentType: parsed.employmentType,
-                                source: 'firecrawl',
-                                sourceUrl: targetUrl,
-                                isActive: true,
-                            },
-                        });
-                        totalIngested++;
-                    } catch (e: any) {
-                        logger.warn(`Failed to ingest Firecrawl job from ${res.url}`, e);
-                    }
-                });
-            }
+            const data = await res.json();
+            return (data.data || data.results || []).map((r: any) => ({
+                url: r.url || r.link,
+                title: r.title,
+                snippet: r.snippet
+            }));
+        } catch (err) {
+            logger.error('Firecrawl Search failed', err);
+            return [];
         }
     }
 
-    await runWithConcurrencyLimit(portalTasks, 3);
+    async scrape(url: string, options?: ScrapeOptions): Promise<CrawlerResult | null> {
+        if (!this.apiKey) return null;
+        try {
+            const res = await fetch('https://api.firecrawl.dev/v1/scrape', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.apiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    url,
+                    formats: options?.formats || ["markdown"],
+                    jsonOptions: options?.jsonOptions,
+                    waitFor: options?.waitFor
+                })
+            });
 
-    logger.info(`Crawl complete. Ingested ${totalIngested} jobs.`);
-    return totalIngested;
+            if (res.status === 402) {
+                logger.warn('Firecrawl Provider: Credits exhausted (402)');
+                return null;
+            }
+
+            if (!res.ok) throw new Error(`Firecrawl Scrape Error: ${res.status}`);
+            
+            const data = await res.json();
+            return {
+                url,
+                markdown: data.data?.markdown,
+                json: data.data?.json,
+                metadata: data.data?.metadata
+            };
+        } catch (err) {
+            logger.error(`Firecrawl Scrape failed for ${url}`, err);
+            return null;
+        }
+    }
+}
+
+// ─── Spider Provider (Spider.cloud) ─────────────────────────────
+class SpiderProvider implements CrawlerProvider {
+    name = 'spider';
+    private apiKey = process.env.SPIDER_API_KEY;
+
+    isAvailable() { return !!this.apiKey && this.apiKey !== ""; }
+
+    async search(query: string, limit = 10): Promise<SearchResult[]> {
+        if (!this.apiKey) return [];
+        try {
+            const res = await fetch('https://api.spider.cloud/search', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.apiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    search: query, 
+                    search_limit: limit,
+                    fetch_page_content: false // Just get results for now
+                })
+            });
+
+            if (!res.ok) return [];
+            const data = await res.json();
+            return (data.results || []).map((r: any) => ({
+                url: r.url,
+                title: r.title,
+                snippet: r.description || r.snippet
+            }));
+        } catch (err) {
+            logger.error('Spider Search failed', err);
+            return [];
+        }
+    }
+
+    async scrape(url: string, options?: ScrapeOptions): Promise<CrawlerResult | null> {
+        if (!this.apiKey) return null;
+        try {
+            const res = await fetch('https://api.spider.cloud/scrape', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.apiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    url, 
+                    return_format: 'markdown',
+                    metadata: true
+                })
+            });
+
+            if (!res.ok) return null;
+            const data = await res.json();
+            // Spider returns an array of results for batch/crawl, or direct object for scrape
+            const content = Array.isArray(data) ? data[0] : data;
+            return {
+                url,
+                markdown: content.content || content.markdown || content.text,
+                metadata: content.metadata
+            };
+        } catch (err) {
+            logger.error(`Spider Scrape failed for ${url}`, err);
+            return null;
+        }
+    }
+}
+
+// ─── Crawlbase Provider ──────────────────────────────────────────
+class CrawlbaseProvider implements CrawlerProvider {
+    name = 'crawlbase';
+    private apiKey = process.env.CRAWLBASE_API_KEY;
+
+    isAvailable() { return !!this.apiKey && this.apiKey !== ""; }
+
+    async search(query: string, limit = 10): Promise<SearchResult[]> {
+        if (!this.apiKey) return [];
+        try {
+            // Use Google Scraper for search-like behavior
+            const apiUrl = `https://api.crawlbase.com/?token=${this.apiKey}&url=${encodeURIComponent(`https://www.google.com/search?q=${encodeURIComponent(query)}`)}&scraper=google-search`;
+            const res = await fetch(apiUrl);
+            
+            if (!res.ok) return [];
+            const data = await res.json();
+            
+            return (data.body?.results || []).slice(0, limit).map((r: any) => ({
+                url: r.url || r.link,
+                title: r.title,
+                snippet: r.description || r.snippet
+            }));
+        } catch (err) {
+            logger.error('Crawlbase Search failed', err);
+            return [];
+        }
+    }
+
+    async scrape(url: string, options?: ScrapeOptions): Promise<CrawlerResult | null> {
+        if (!this.apiKey) return null;
+        try {
+            const apiUrl = `https://api.crawlbase.com/?token=${this.apiKey}&url=${encodeURIComponent(url)}&format=json`;
+            const res = await fetch(apiUrl);
+            
+            if (!res.ok) return null;
+            const data = await res.json();
+            return {
+                url,
+                markdown: data.body, // This is raw HTML usually
+                metadata: data.metadata
+            };
+        } catch (err) {
+            logger.error(`Crawlbase Scrape failed for ${url}`, err);
+            return null;
+        }
+    }
+}
+
+// ─── Scrape.do Provider ──────────────────────────────────────────
+class ScrapeDoProvider implements CrawlerProvider {
+    name = 'scrapedo';
+    private apiKey = process.env.SCRAPEDO_API_KEY;
+
+    isAvailable() { return !!this.apiKey; }
+
+    async search(query: string, limit = 10): Promise<SearchResult[]> {
+        return []; // Scrape.do is a direct scraper
+    }
+
+    async scrape(url: string, options?: ScrapeOptions): Promise<CrawlerResult | null> {
+        if (!this.apiKey) return null;
+        try {
+            const apiUrl = `https://api.scrape.do/?token=${this.apiKey}&url=${encodeURIComponent(url)}`;
+            const res = await fetch(apiUrl);
+            
+            if (!res.ok) return null;
+            const text = await res.text();
+            return {
+                url,
+                markdown: text // Normalizing to markdown via Jina or other might be needed later
+            };
+        } catch (err) {
+            logger.error(`Scrape.do failed for ${url}`, err);
+            return null;
+        }
+    }
+}
+
+// ─── Unified Crawler Service ─────────────────────────────────────
+export class CrawlerService {
+    private static providers: CrawlerProvider[] = [
+        new FirecrawlProvider(),
+        new SpiderProvider(),
+        new CrawlbaseProvider(),
+        new ScrapeDoProvider()
+    ];
+
+    /**
+     * Executes a search query across available providers with failover.
+     */
+    static async search(query: string, limit = 10): Promise<SearchResult[]> {
+        for (const provider of this.providers) {
+            if (!provider.isAvailable()) continue;
+            
+            logger.info(`CrawlerService: Trying search with ${provider.name}...`);
+            const results = await provider.search(query, limit);
+            
+            if (results.length > 0) {
+                logger.info(`CrawlerService: Success with ${provider.name} (${results.length} results)`);
+                return results;
+            }
+            
+            logger.warn(`CrawlerService: ${provider.name} failed or returned empty. Falling back...`);
+        }
+        
+        logger.error('CrawlerService: All search providers failed.');
+        return [];
+    }
+
+    /**
+     * Scrapes a URL with failover protection.
+     */
+    static async scrape(url: string, options?: ScrapeOptions): Promise<CrawlerResult | null> {
+        for (const provider of this.providers) {
+            if (!provider.isAvailable()) continue;
+            
+            logger.info(`CrawlerService: Trying scrape with ${provider.name} for ${url}...`);
+            const result = await provider.scrape(url, options);
+            
+            if (result && (result.markdown || result.json)) {
+                return result;
+            }
+            
+            logger.warn(`CrawlerService: ${provider.name} scrape failed for ${url}. Falling back...`);
+        }
+        
+        return null;
+    }
 }

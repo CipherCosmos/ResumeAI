@@ -7,28 +7,39 @@ import { parserQueue } from '../lib/queue';
 import { AIOrchestrator } from '../lib/jobs/orchestrator';
 import { MaintenanceService } from '../lib/jobs/maintenance';
 
+import { CrawlerService } from '../lib/jobs/crawler';
+
 const JINA_API_KEY = process.env.JINA_API;
-const FIRECRAWL_API_KEY = process.env.FIRECRAWL_API;
 
 // ─── Query Rotation Config ───────────────────────────
 const TARGET_RESOURCES = [
+    { site: 'internshala.com', label: 'Internshala' },
+    { site: 'unstop.com', label: 'Unstop (Dare2Compete)' },
     { site: 'linkedin.com/jobs', label: 'LinkedIn' },
     { site: 'indeed.com', label: 'Indeed' },
+    { site: 'naukri.com', label: 'Naukri' },
     { site: 'foundit.in', label: 'Foundit' },
     { site: 'wellfound.com', label: 'Wellfound' },
+    { site: 'otta.com', label: 'Otta' },
+    { site: 'hired.com', label: 'Hired' },
+    { site: 'toptal.com', label: 'Toptal' },
     { site: 'glassdoor.com/Job', label: 'Glassdoor' },
-    { site: 'naukri.com', label: 'Naukri' },
     { site: 'jobs.lever.co', label: 'Lever ATS' },
     { site: 'boards.greenhouse.io', label: 'Greenhouse ATS' },
     { site: 'workable.com', label: 'Workable ATS' },
-    { site: 'otta.com', label: 'Otta' },
     { site: 'smartrecruiters.com', label: 'SmartRecruiters' },
     { site: 'myworkdayjobs.com', label: 'Workday' },
-    { site: 'simplyhired.com', label: 'SimplyHired' },
-    { site: 'careerbuilder.com', label: 'CareerBuilder' },
-    { site: 'flexjobs.com', label: 'FlexJobs' },
-    { site: 'monster.com', label: 'Monster' },
-    { site: 'ziprecruiter.com', label: 'ZipRecruiter' },
+    { site: 'jobs.google.com', label: 'Google Careers' },
+    { site: 'amazon.jobs', label: 'Amazon Jobs' },
+    { site: 'careers.microsoft.com', label: 'Microsoft Careers' },
+    { site: 'metacareers.com', label: 'Meta Careers' },
+    { site: 'careers.apple.com', label: 'Apple Careers' },
+    { site: 'jobs.netflix.com', label: 'Netflix Jobs' },
+    { site: 'careers.jpmorgan.com', label: 'JPMC Careers' },
+    { site: 'careers.morganstanley.com', label: 'Morgan Stanley' },
+    { site: 'careers.tcs.com', label: 'TCS Careers' },
+    { site: 'infosys.com/careers', label: 'Infosys Careers' },
+    { site: 'wipro.com/careers', label: 'Wipro Careers' },
     { site: 'remotive.com', label: 'Remotive Hub' },
     { site: 'arbeitnow.com', label: 'Arbeitnow Hub' }
 ];
@@ -44,16 +55,19 @@ const JOB_ROLES = [
     'Systems Programmer', 'Embedded Engineer', 'Blockchain Developer',
     'Database Administrator', 'Technical Writer', 'Scrum Master',
     'Sales Engineer', 'Account Executive', 'Customer Success Manager',
-    'Social Media Manager', 'Content Strategist', 'SEO Specialist',
+    'Financial Analyst', 'Investment Banker', 'Marketing Manager',
+    'HR Business Partner', 'Operations Associate', 'Legal Counsel',
+    'Content Strategist', 'SEO Specialist',
     'Internship', 'Graduate Engineer', 'Research Intern', 'Product Management Intern',
     'New Graduate', 'Batch of 2026', 'Fresher', 'Associate Software Engineer',
-    'Graduate Engineer Trainee', 'Junior Developer'
+    'Graduate Engineer Trainee', 'Junior Developer', 'Management Trainee',
+    'Rotational Analyst', 'Leadership Development Program'
 ];
 
 const SENIORITIES = [
     'Intern', 'Student', 'Entry Level', 'Junior', 'Associate',
     'Senior', 'Staff', 'Principal', 'Fresh Graduate', 'New Grad',
-    'Batch of 2026', 'Batch of 2025'
+    'Batch of 2026', 'Batch of 2025', 'Class of 2025', 'Class of 2026'
 ];
 
 const EMPLOYMENT_TYPES = [
@@ -92,60 +106,58 @@ async function fetchArbeitnowJobs() {
 }
 
 async function scrapeWithFirecrawl(query: string, limit = 15) {
-    if (!FIRECRAWL_API_KEY) return [];
-    try {
-        const res = await fetch('https://api.firecrawl.dev/v1/search', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${FIRECRAWL_API_KEY}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                query,
-                limit
-            })
-        });
-        const data = await res.json();
-        return (data.data || data.results || []).slice(0, limit);
-    } catch (err) {
-        logger.error('Worker: Firecrawl scraping failed', err);
-        return [];
-    }
+    return await CrawlerService.search(query, limit);
 }
 
-async function expandHubJobs(url: string): Promise<string[]> {
-    if (!FIRECRAWL_API_KEY || visitedUrls.has(url)) return [];
-    visitedUrls.add(url);
+async function expandHubJobs(url: string | any): Promise<string[]> {
+    const targetUrl = typeof url === 'string' ? url : url.url;
+    if (visitedUrls.has(targetUrl)) return [];
+    visitedUrls.add(targetUrl);
     
     try {
-        const res = await fetch('https://api.firecrawl.dev/v1/scrape', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${FIRECRAWL_API_KEY}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                url,
-                formats: ["json"],
-                jsonOptions: {
-                    schema: {
-                        type: "object",
-                        properties: {
-                            job_urls: {
-                                type: "array",
-                                items: { type: "string" },
-                                description: "URLs of individual job detail pages"
-                            }
-                        },
-                        required: ["job_urls"]
-                    }
+        const isInternshala = targetUrl.includes('internshala.com');
+        const isMNC = targetUrl.includes('google.com') || targetUrl.includes('amazon.jobs') || targetUrl.includes('microsoft.com');
+
+        const schema = {
+            type: "object",
+            properties: {
+                job_urls: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "URLs of individual job detail pages"
                 }
-            })
+            },
+            required: ["job_urls"]
+        };
+
+        const body: any = {
+            url: targetUrl,
+            formats: ["json"],
+            jsonOptions: { schema }
+        };
+
+        // If it's a high-priority board, we might want to wait for content to load
+        if (isInternshala || isMNC) {
+            body.waitFor = 2000; // Give dynamic content time to breathe
+        }
+
+        const result = await CrawlerService.scrape(targetUrl, {
+            formats: ["json"],
+            jsonOptions: { schema },
+            waitFor: (isInternshala || isMNC) ? 2000 : 0
         });
-        const data = await res.json();
-        const extracted = data.data?.json?.job_urls || [];
-        logger.info(`Worker: Hub expansion found ${extracted.length} links for ${url}`);
-        return extracted;
+
+        if (!result || !result.json) return [];
+        const extracted = result.json.job_urls || [];
+        
+        // Filter out obvious noise URLs
+        const cleaned = extracted.filter((link: string) => {
+            const l = link.toLowerCase();
+            return l.includes('/jobs/') || l.includes('/careers/') || l.includes('/positions/') || l.match(/\/\d+/);
+        });
+
+        logger.info(`Worker: Hub expansion found ${cleaned.length} filtered links for ${url}`);
+        return cleaned;
     } catch (err) {
         logger.error(`Worker: Hub expansion failed for ${url}`, err);
         return [];
@@ -170,12 +182,32 @@ async function processJobUrl(targetUrl: string, sourceTitle: string, sourceCompa
         }
 
         if (!finalCompany || finalCompany === 'Scraped Company' || finalCompany === 'Unknown Company') {
-            const companyMatch = markdown.match(/About\s+([A-Z][a-zA-Z0-9\s&]+)/i);
-            if (companyMatch) {
-                finalCompany = companyMatch[1].trim();
-                logger.info(`Worker: Regex extracted company: ${finalCompany}`);
+            // Priority 1: Meta tags (often cleaner)
+            const metaMatch = markdown.match(/brand:\s*([A-Z][\w\s&.-]+)/i);
+            if (metaMatch) finalCompany = metaMatch[1].trim();
+
+            if (!finalCompany || finalCompany === 'Unknown Company') {
+                // Priority 2: "About [Company]" but with strict multi-word limit to avoid sentences
+                const companyMatch = markdown.match(/About\s+([A-Z][A-Za-z0-9\s&]{2,30})(?:\s+is|\r|\n|\.)/);
+                if (companyMatch) {
+                    finalCompany = companyMatch[1].trim();
+                    logger.info(`Worker: Regex extracted company: ${finalCompany}`);
+                }
             }
         }
+
+        // --- Basic Meta-data Regex Fallback ---
+        let salary = 'Unknown';
+        const salaryMatch = markdown.match(/(\$\d{2,3},?\d{3}|\d{2,3}k)\s*(?:-|to)\s*(\$\d{2,3},?\d{3}|\d{2,3}k)/i);
+        if (salaryMatch) {
+            salary = salaryMatch[0].trim();
+            logger.info(`Worker: Regex extracted salary: ${salary}`);
+        }
+
+        let experienceLevel = 'Mid';
+        if (markdown.match(/intern|student|freshman|sophomore|graduating/i)) experienceLevel = 'Intern';
+        else if (markdown.match(/entry level|0-2 years|junior/i)) experienceLevel = 'Entry';
+        else if (markdown.match(/senior|staff|principal|lead|8\+ years/i)) experienceLevel = 'Senior';
 
         const lowerMarkdown = markdown.toLowerCase();
         const jobMarkers = ['requirement', 'responsibility', 'qualification', 'benefit', 'about the role', 'apply now', 'submit application', 'compensation', 'salary range'];
@@ -193,13 +225,13 @@ async function processJobUrl(targetUrl: string, sourceTitle: string, sourceCompa
         }
 
         const contentHash = generateJobFingerprint({
-            title: sourceTitle,
-            company: sourceCompany || 'Scraped Company',
+            title: finalTitle,
+            company: finalCompany || 'Scraped Company',
             location: 'Remote',
             description: markdown
         });
 
-        const existingJob = await (prisma as any).jobPosting.findUnique({
+        const existingJob = await (prisma as any).jobPosting.findFirst({
             where: { sourceUrl: targetUrl }
         });
 
@@ -211,29 +243,42 @@ async function processJobUrl(targetUrl: string, sourceTitle: string, sourceCompa
             return true;
         }
 
-        const resResult = await (prisma as any).jobPosting.upsert({
-            where: { sourceUrl: targetUrl },
-            update: {
-                title: sourceTitle,
-                company: sourceCompany || 'Scraped Company',
-                description: markdown,
-                contentHash,
-                lastSeen: new Date(),
-                isActive: true,
-                updatedAt: new Date()
-            },
-            create: {
+        if (existingJob) {
+            const resResult = await (prisma as any).jobPosting.update({
+                where: { id: existingJob.id },
+                data: {
+                    title: finalTitle,
+                    company: finalCompany || 'Scraped Company',
+                    description: markdown,
+                    contentHash,
+                    salary: salary !== 'Unknown' ? salary : existingJob.salary,
+                    experienceLevel: experienceLevel !== 'Mid' ? experienceLevel : existingJob.experienceLevel,
+                    lastSeen: new Date(),
+                    postedAt: existingJob.postedAt || new Date(), // Ensure it's never null
+                    isActive: true,
+                    updatedAt: new Date()
+                }
+            });
+            await parserQueue.add('parse-job', { jobId: resResult.id });
+            return true;
+        }
+
+        const resResult = await (prisma as any).jobPosting.create({
+            data: {
                 externalId: targetUrl,
-                title: sourceTitle,
-                company: sourceCompany || 'Scraped Company',
+                title: finalTitle,
+                company: finalCompany || 'Scraped Company',
                 description: markdown,
                 source: 'firecrawl',
                 sourceUrl: targetUrl,
                 location: 'Remote',
+                salary: salary,
+                experienceLevel: experienceLevel,
                 isActive: true,
                 contentHash,
                 firstSeen: new Date(),
-                lastSeen: new Date()
+                lastSeen: new Date(),
+                postedAt: new Date() // Default to now so it shows up in UI
             }
         });
 
@@ -528,7 +573,7 @@ async function runCrawlCycle() {
             // Manual fallback discovery logic
             if (discoveryMode) {
                 for (const res of portalResults) {
-                    const url = res.url || res.link;
+                    const url = res.url;
                     if (url && (url.includes('lever.co') || url.includes('greenhouse.io') || url.includes('workable.com') || url.includes('careers'))) {
                         const domain = new URL(url).hostname.replace(/^www\./, '');
                         await (prisma as any).careerSite.upsert({
@@ -550,14 +595,14 @@ async function runCrawlCycle() {
         // 2. Filter & Process Results (AI-Driven)
         let evaluations: any[] = [];
         try {
-            evaluations = await AIOrchestrator.evaluateUrls(portalResults.map((r: any) => ({ url: r.url || r.link, title: r.title })));
+            evaluations = await AIOrchestrator.evaluateUrls(portalResults.map((r: any) => ({ url: r.url, title: r.title })));
         } catch (err) {
             // Fallback: assume everything might be a job
-            evaluations = portalResults.map((r: any) => ({ url: r.url || r.link, category: 'job_desc' }));
+            evaluations = portalResults.map((r: any) => ({ url: r.url, category: 'job_desc' }));
         }
 
         for (const res of portalResults) {
-            const targetUrl = res.url || res.link;
+            const targetUrl = res.url;
             if (!targetUrl) continue;
 
             const evaluation = evaluations.find(e => e.url === targetUrl);
@@ -576,14 +621,14 @@ async function runCrawlCycle() {
                     logger.info(`Worker: HUB DETECTED: ${res.title}. Expanding...`);
                     const children = await expandHubJobs(targetUrl);
                     for (const childUrl of children) {
-                        if (await processJobUrl(childUrl, res.title.replace(/\d+\s+/, ''), res.company)) {
+                        if (await processJobUrl(childUrl, (res.title || '').replace(/\d+\s+/, ''), (res as any).company)) {
                             totalIngested++;
                         }
                     }
                     return;
                 }
 
-                if (await processJobUrl(targetUrl, res.title, res.company)) {
+                if (await processJobUrl(targetUrl, res.title || 'Unknown Role', (res as any).company)) {
                     totalIngested++;
                 }
             });

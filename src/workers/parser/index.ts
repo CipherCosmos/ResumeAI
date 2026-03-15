@@ -76,7 +76,7 @@ export const parserWorker = createWorker('parser-queue', async (job: any) => {
                 salaryMax: data.salaryMax,
                 experienceLevel: data.experienceLevel ?? jobPosting.experienceLevel ?? 'Mid',
                 employmentType: data.employmentType ?? jobPosting.employmentType ?? 'Full-time',
-                postedAt: parseDate(data.postedAt) || jobPosting.postedAt,
+                postedAt: parseDate(data.postedAt) || jobPosting.postedAt || jobPosting.firstSeen || new Date(),
                 isActive: isBadData ? false : (data.isClosed ? false : jobPosting.isActive),
                 updatedAt: new Date(),
             }

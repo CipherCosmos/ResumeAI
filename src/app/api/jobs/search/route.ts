@@ -128,8 +128,25 @@ export async function GET(req: Request) {
                 }
 
                 // Experience alignment (Max 15)
-                if (experience.length > 0 && job.experienceLevel && experience.includes(job.experienceLevel)) {
-                    score += 15;
+                if (experience.length > 0 && job.experienceLevel) {
+                    if (experience.includes(job.experienceLevel)) score += 15;
+                    else if (experience.includes('Entry') && job.experienceLevel === 'Intern') score += 10;
+                    else if (experience.includes('Senior') && job.experienceLevel === 'Mid') score += 5;
+                }
+
+                // Skill / Discipline Overlap (Max 25)
+                if (disciplines.length > 0) {
+                    const jobSkills = Array.isArray(job.skills) ? (job.skills as string[]).map(s => s.toLowerCase()) : [];
+                    const matches = disciplines.filter(d => {
+                        const dl = d.toLowerCase();
+                        return jobSkills.some(js => js.includes(dl)) || job.title.toLowerCase().includes(dl);
+                    });
+                    score += Math.min(25, matches.length * 10);
+                }
+
+                // Location Type (Max 10)
+                if (remote && job.location?.toLowerCase().includes('remote')) {
+                    score += 10;
                 }
 
                 return { ...job, discoveryScore: score };

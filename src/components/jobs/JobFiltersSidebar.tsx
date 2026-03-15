@@ -22,11 +22,14 @@ const DISCIPLINES = [
     { id: 'Data', label: 'Data & AI' },
     { id: 'Design', label: 'Design' },
     { id: 'Product', label: 'Product' },
+    { id: 'Finance', label: 'Finance' },
     { id: 'Operations', label: 'Ops' },
+    { id: 'HR', label: 'HR' },
 ];
 
 const LEVELS = [
-    { id: 'Entry', label: 'Entry' },
+    { id: 'Intern', label: 'Intern' },
+    { id: 'Entry', label: 'Graduate' },
     { id: 'Mid', label: 'Mid' },
     { id: 'Senior', label: 'Senior' },
     { id: 'Lead', label: 'Lead' },

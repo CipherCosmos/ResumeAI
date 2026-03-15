@@ -17,16 +17,19 @@ Return ONLY a JSON object with this schema:
   "salaryMin": number | null,
   "salaryMax": number | null,
   "currency": "USD, EUR, etc.",
-  "experienceLevel": "Entry" | "Mid" | "Senior" | "Lead" | "Exec",
+  "experienceLevel": "Intern" | "Entry" | "Mid" | "Senior" | "Lead" | "Exec",
   "employmentType": "Full-time" | "Part-time" | "Contract" | "Internship",
-  "industry": "e.g. Fintech, Healthcare, Robotics",
+  "industry": "e.g. Fintech, Healthcare, Robotics, Finance, Legal, HR",
+  "roleCategory": "Engineering" | "Design" | "Product" | "Sales" | "Marketing" | "Operations" | "Finance" | "HR" | "Legal",
   "postedAt": "ISO date string (YYYY-MM-DD)",
   "benefits": ["Benefit1", "Benefit2"],
   "isClosed": boolean,
   "metadata": {
     "isEntryLevel": boolean,
     "isRemoteFriendly": boolean,
-    "hasVisaSponsorship": boolean | null
+    "hasVisaSponsorship": boolean | null,
+    "isRotationalProgram": boolean,
+    "batchYear": "2025" | "2026" | null
   }
 }
 
