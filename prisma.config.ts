@@ -9,6 +9,8 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    // Use direct connection (port 5432) for CLI operations (db push, migrate)
+    // PgBouncer (port 6543) doesn't support DDL operations well
+    url: process.env["DIRECT_URL"] || process.env["DATABASE_URL"],
   },
 });

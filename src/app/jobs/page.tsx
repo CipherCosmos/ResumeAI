@@ -249,7 +249,7 @@ function BrowseTab({ jobs, isLoading, onSearch }: { jobs: any[], isLoading: bool
                                 variant="outline" 
                                 onClick={() => {
                                     setLocalSearch('');
-                                    setFilters({ search: '', location: '', level: '', type: '' });
+                                    setFilters({ search: '', location: '', level: [], type: [] });
                                     fetchJobs();
                                 }}
                                 className="rounded-xl border-white/5 text-xs font-bold uppercase tracking-widest text-zinc-400 hover:text-white"

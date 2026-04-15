@@ -8,6 +8,7 @@ export function DesignerTemplate({ data }: { data: ResumeData }) {
       <header className="mb-6 bg-purple-50 p-8 rounded-2xl relative overflow-hidden text-center">
         <div className="absolute top-0 right-0 w-32 h-32 bg-purple-200 rounded-full blur-3xl opacity-50 -mr-10 -mt-10"></div>
         <div className="absolute bottom-0 left-0 w-24 h-24 bg-purple-300 rounded-full blur-2xl opacity-50 -ml-10 -mb-10"></div>
+        <img src="/images/templates/designer_accent.png" className="absolute top-0 right-0 w-64 opacity-20 transform -rotate-12 -mt-8 -mr-8 pointer-events-none mix-blend-multiply" alt="" />
         
         <h1 className="text-4xl font-extrabold text-purple-900 mb-2 relative z-10">{personal.fullName}</h1>
         {data.targetRole && <h2 className="text-xl font-medium text-purple-700 relative z-10">{data.targetRole}</h2>}

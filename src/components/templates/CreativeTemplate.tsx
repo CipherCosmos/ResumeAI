@@ -4,8 +4,8 @@ import { ResumeData } from '@/types/resume';
 export function CreativeTemplate({ data }: { data: ResumeData }) {
   const { personal, summary, experience, education, projects, skills } = data;
   return (
-    <div className="resume-paper flex flex-row" style={{ fontFamily: data.fontFamily || 'sans-serif' }}>
-      <aside className="w-1/3 bg-amber-50 p-6 border-r border-amber-200 min-h-full">
+    <div className="resume-paper flex flex-row bg-cover bg-center" style={{ fontFamily: data.fontFamily || 'sans-serif', backgroundImage: "url('/images/templates/creative_bg.png')" }}>
+      <aside className="w-1/3 bg-amber-50/90 p-6 border-r border-amber-200 min-h-full backdrop-blur-[2px]">
         <h1 className="text-3xl font-black text-amber-900 mb-6 leading-tight uppercase tracking-tighter">{personal.fullName.split(' ').map((n, i) => <div key={i}>{n}</div>)}</h1>
         <div className="text-[0.8em] text-amber-800 space-y-2 mb-8 font-medium">
           {personal.location && <div>{personal.location}</div>}
@@ -39,7 +39,7 @@ export function CreativeTemplate({ data }: { data: ResumeData }) {
         )}
       </aside>
 
-      <main className="w-2/3 p-6 bg-white shrink-0 min-h-full">
+      <main className="w-2/3 p-6 bg-white/90 shrink-0 min-h-full backdrop-blur-[2px]">
         {summary && (
           <section className="mb-8">
             <h2 className="text-[0.9em] font-black uppercase tracking-wider text-slate-900 mb-2">Profile</h2>

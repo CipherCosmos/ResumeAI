@@ -10,39 +10,42 @@ export function ModernTemplate({ data }: TemplateProps) {
 
   return (
     <div className="resume-paper template-modern font-sans text-slate-800">
-      <header className="flex items-center justify-between mb-8 pb-6 border-b-4 border-indigo-700">
-        <div className="flex-1">
-          <h1 className="text-4xl font-extrabold text-indigo-700 mb-1 tracking-tight">{personal.fullName}</h1>
+      <header className="relative flex items-center justify-between mb-8 p-8 rounded-xl overflow-hidden shadow-sm">
+        <div className="absolute inset-0 z-0 bg-slate-900">
+          <div className="absolute inset-0 opacity-40 bg-cover bg-center mix-blend-screen" style={{ backgroundImage: "url('/images/templates/modern_header.png')" }} />
+        </div>
+        <div className="relative z-10 flex-1">
+          <h1 className="text-4xl font-extrabold text-white mb-1 tracking-tight">{personal.fullName}</h1>
           {data.targetRole && (
-             <h2 className="text-xl font-medium text-slate-600 tracking-wide uppercase mb-3">{data.targetRole}</h2>
+             <h2 className="text-xl font-medium text-indigo-300 tracking-wide uppercase mb-3">{data.targetRole}</h2>
           )}
-          <div className="text-base font-semibold text-slate-600 flex flex-wrap gap-x-4 gap-y-2">
+          <div className="text-base font-medium text-slate-300 flex flex-wrap gap-x-4 gap-y-2">
             {personal.location && <span className="flex items-center gap-1">{personal.location}</span>}
             {personal.phone && <span className="flex items-center gap-1">{personal.phone}</span>}
             {personal.email && (
-              <a href={`mailto:${personal.email}`} className="flex items-center gap-1 hover:text-indigo-700 transition-colors">
+              <a href={`mailto:${personal.email}`} className="flex items-center gap-1 hover:text-white transition-colors">
                 {personal.email}
               </a>
             )}
             {personal.linkedin && (
-              <a href={personal.linkedin.startsWith('http') ? personal.linkedin : `https://${personal.linkedin}`} target="_blank" rel="noopener" className="flex items-center gap-1 hover:text-indigo-700 transition-colors">
+              <a href={personal.linkedin.startsWith('http') ? personal.linkedin : `https://${personal.linkedin}`} target="_blank" rel="noopener" className="flex items-center gap-1 hover:text-white transition-colors">
                 LinkedIn
               </a>
             )}
             {personal.github && (
-              <a href={personal.github.startsWith('http') ? personal.github : `https://${personal.github}`} target="_blank" rel="noopener" className="flex items-center gap-1 hover:text-indigo-700 transition-colors">
+              <a href={personal.github.startsWith('http') ? personal.github : `https://${personal.github}`} target="_blank" rel="noopener" className="flex items-center gap-1 hover:text-white transition-colors">
                 GitHub
               </a>
             )}
             {personal.portfolio && (
-              <a href={personal.portfolio.startsWith('http') ? personal.portfolio : `https://${personal.portfolio}`} target="_blank" rel="noopener" className="flex items-center gap-1 hover:text-indigo-700 transition-colors">
+              <a href={personal.portfolio.startsWith('http') ? personal.portfolio : `https://${personal.portfolio}`} target="_blank" rel="noopener" className="flex items-center gap-1 hover:text-white transition-colors">
                 Portfolio
               </a>
             )}
           </div>
         </div>
         {personal.profileImage && (
-          <img src={personal.profileImage} alt="Profile" className="w-24 h-24 rounded-full object-cover border-2 border-indigo-700 shadow-sm ml-6" />
+          <img src={personal.profileImage} alt="Profile" className="relative z-10 w-24 h-24 rounded-full object-cover border-4 border-indigo-400/50 shadow-sm ml-6" />
         )}
       </header>
 

@@ -61,8 +61,13 @@ function BuilderContent() {
     );
   }
 
+  useEffect(() => {
+    if (status !== 'loading' && !session) {
+      router.push('/auth/signin');
+    }
+  }, [session, status, router]);
+
   if (!session) {
-    router.push('/auth/signin');
     return null;
   }
 
