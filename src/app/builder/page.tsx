@@ -62,10 +62,10 @@ function BuilderContent() {
   }
 
   useEffect(() => {
-    if (status !== 'loading' && !session) {
+    if (!session) {
       router.push('/auth/signin');
     }
-  }, [session, status, router]);
+  }, [session, router]);
 
   if (!session) {
     return null;
